@@ -1,0 +1,19 @@
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 64px 24px;
+  width: 100%;
+}
+
+.main h1 {
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}

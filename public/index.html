@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tribox — Build. Sell. Support.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #09090b;
+      --surface: #111113;
+      --border: #27272a;
+      --muted: #71717a;
+      --text: #fafafa;
+      --accent: #e4e4e7;
+      --max-w: 1100px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Layout ── */
+    .container {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity .15s, background .15s;
+      border: none;
+    }
+    .btn-filled {
+      background: var(--accent);
+      color: #09090b;
+    }
+    .btn-filled:hover { opacity: .85; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--accent); }
+    .btn-text {
+      background: transparent;
+      color: var(--muted);
+      padding: 10px 0;
+      font-size: 14px;
+    }
+    .btn-text:hover { color: var(--text); }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(9,9,11,.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid transparent;
+      transition: border-color .2s;
+    }
+    nav.scrolled { border-bottom-color: var(--border); }
+    .nav-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: -.01em;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 14px;
+      color: var(--muted);
+      transition: color .15s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .nav-login {
+      font-size: 14px;
+      color: var(--muted);
+      transition: color .15s;
+    }
+    .nav-login:hover { color: var(--text); }
+    .nav-user-email {
+      font-size: 14px;
+      color: var(--muted);
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .nav-start {
+      padding: 7px 16px;
+      font-size: 13px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 120px 24px 80px;
+      text-align: center;
+      max-width: var(--max-w);
+      margin: 0 auto;
+    }
+    .eyebrow {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .12em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+    .hero-headline {
+      font-size: clamp(48px, 7vw, 80px);
+      font-weight: 600;
+      letter-spacing: -.04em;
+      line-height: 1.05;
+      color: var(--text);
+      margin-bottom: 24px;
+    }
+    .hero-sub {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 520px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+    .hero-ctas {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-bottom: 72px;
+    }
+    .play-icon {
+      width: 16px;
+      height: 16px;
+      border: 1.5px solid currentColor;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .play-icon::after {
+      content: '';
+      width: 0;
+      height: 0;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      border-left: 6px solid currentColor;
+      margin-left: 1px;
+    }
+
+    /* ── Product mockup ── */
+    .hero-mockup {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      max-width: 840px;
+      margin: 0 auto;
+    }
+    .mockup-chrome {
+      background: #18181b;
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chrome-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+    .mockup-body {
+      display: flex;
+      height: 320px;
+    }
+    .mockup-sidebar {
+      width: 180px;
+      border-right: 1px solid var(--border);
+      padding: 16px;
+      flex-shrink: 0;
+    }
+    .sidebar-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 2px;
+      cursor: pointer;
+    }
+    .sidebar-item.active {
+      background: #27272a;
+      color: var(--text);
+    }
+    .sidebar-item-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 1px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+    .sidebar-item.active .sidebar-item-dot { background: var(--accent); }
+    .mockup-canvas {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .canvas-block {
+      background: #18181b;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .canvas-block-hero { height: 80px; }
+    .canvas-block-row {
+      display: flex;
+      gap: 12px;
+      flex: 1;
+    }
+    .canvas-block-card {
+      flex: 1;
+      background: #18181b;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      min-height: 88px;
+    }
+    .canvas-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .canvas-toolbar-btn {
+      width: 28px;
+      height: 22px;
+      background: #27272a;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+
+    /* ── Section common ── */
+    section { padding: 96px 0; }
+    .section-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    .section-title {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 600;
+      letter-spacing: -.03em;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+    .section-body {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.75;
+      max-width: 400px;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+    .feature-grid.reversed { direction: rtl; }
+    .feature-grid.reversed > * { direction: ltr; }
+
+    /* ── Bullets ── */
+    .bullet-list {
+      list-style: none;
+      margin-top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .bullet-list li {
+      font-size: 14px;
+      color: var(--muted);
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .bullet-list li::before {
+      content: '·';
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* ── Section 1 mockup ── */
+    .builder-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .builder-header {
+      background: #18181b;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .builder-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+    .builder-body {
+      display: flex;
+      height: 260px;
+    }
+    .builder-panel {
+      width: 140px;
+      border-right: 1px solid var(--border);
+      padding: 12px;
+    }
+    .panel-heading {
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .panel-row {
+      padding: 5px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 2px;
+      cursor: default;
+    }
+    .panel-row.sel { background: #27272a; color: var(--text); }
+    .builder-canvas {
+      flex: 1;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .b-block { background: #18181b; border: 1px solid var(--border); border-radius: 4px; }
+    .b-hero { height: 60px; }
+    .b-row { display: flex; gap: 8px; }
+    .b-card { flex: 1; height: 72px; }
+    .b-nav { height: 32px; }
+
+    /* ── Section 2 template grid ── */
+    .template-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .template-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      position: relative;
+    }
+    .template-card-header {
+      height: 32px;
+      background: #18181b;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0 10px;
+    }
+    .template-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
+    .template-body { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .t-block { background: #27272a; border-radius: 3px; }
+    .t-tall { height: 48px; }
+    .t-short { height: 20px; width: 60%; }
+    .t-row { display: flex; gap: 6px; }
+    .t-chip { height: 20px; flex: 1; background: #27272a; border-radius: 3px; }
+    .template-label {
+      position: absolute;
+      bottom: 8px;
+      left: 10px;
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* ── Stat boxes ── */
+    .stat-row {
+      display: flex;
+      gap: 24px;
+      margin-top: 32px;
+    }
+    .stat-box {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      min-width: 120px;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -.03em;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .stat-label { font-size: 12px; color: var(--muted); }
+
+    /* ── Section 3 chat ── */
+    .chat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .chat-header {
+      background: #18181b;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .chat-avatar {
+      width: 28px;
+      height: 28px;
+      background: #27272a;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .chat-info { flex: 1; }
+    .chat-name { font-size: 13px; font-weight: 500; }
+    .chat-status { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+    .chat-messages { padding: 16px; display: flex; flex-direction: column; gap: 12px; min-height: 240px; }
+    .msg { max-width: 75%; }
+    .msg-user { align-self: flex-end; }
+    .msg-bubble {
+      padding: 9px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .msg-user .msg-bubble {
+      background: #27272a;
+      color: var(--text);
+      border-bottom-right-radius: 3px;
+    }
+    .msg-agent .msg-bubble {
+      background: #18181b;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-bottom-left-radius: 3px;
+    }
+    .chat-input-row {
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chat-input-fake {
+      flex: 1;
+      height: 32px;
+      background: #18181b;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0 12px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+    }
+    .chat-send {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .chat-send svg { width: 14px; height: 14px; color: #09090b; }
+
+    /* ── Code snippet ── */
+    .code-block {
+      background: #18181b;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-top: 24px;
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 13px;
+      color: #a1a1aa;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .code-tag { color: var(--accent); }
+    .code-attr { color: #7dd3fc; }
+    .code-val { color: #86efac; }
+
+    /* ── Pricing ── */
+    .pricing-section { padding: 96px 0; }
+    .pricing-header { text-align: center; margin-bottom: 56px; }
+    .pricing-title {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 600;
+      letter-spacing: -.03em;
+      margin-bottom: 12px;
+    }
+    .pricing-sub { font-size: 15px; color: var(--muted); max-width: 400px; margin: 0 auto 32px; }
+
+    /* Toggle */
+    .toggle-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+    .toggle-label { font-size: 14px; color: var(--muted); }
+    .toggle-label.active { color: var(--text); }
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      cursor: pointer;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 12px;
+      transition: background .2s;
+    }
+    .toggle input:checked + .toggle-track { background: var(--accent); }
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      background: var(--bg);
+      border-radius: 50%;
+      transition: transform .2s;
+    }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(20px); }
+    .toggle-track:has(~ .toggle-thumb) { /* fallback handled via JS */ }
+    .save-badge {
+      font-size: 11px;
+      font-weight: 500;
+      background: #27272a;
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 100px;
+    }
+
+    /* Cards */
+    .pricing-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 40px;
+    }
+    .pricing-card { padding: 40px; }
+    .pricing-card + .pricing-card { border-left: 1px solid var(--border); }
+    .pricing-card.featured { background: var(--surface); position: relative; }
+    .popular-badge {
+      position: absolute; top: 20px; right: 20px; font-size: 10px; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--accent);
+      background: #27272a; padding: 3px 10px; border-radius: 100px;
+    }
+    .plan-name {
+      font-size: 13px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .plan-price {
+      font-size: 48px;
+      font-weight: 600;
+      letter-spacing: -.04em;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .plan-period { font-size: 14px; color: var(--muted); margin-bottom: 12px; }
+    .plan-desc { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+    .plan-features { list-style: none; margin-bottom: 32px; display: flex; flex-direction: column; gap: 10px; }
+    .plan-features li { font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+    .check { color: var(--accent); font-size: 14px; }
+
+    /* Compare table */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .compare-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .compare-table td:first-child { color: var(--text); }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .t-check { color: var(--accent); }
+    .t-dash { color: #3f3f46; }
+
+    /* FAQ */
+    .faq { margin-top: 48px; }
+    .faq-title { font-size: 14px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 16px; }
+    .faq-item { border-top: 1px solid var(--border); }
+    .faq-item:last-child { border-bottom: 1px solid var(--border); }
+    .faq-question {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 0;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 500;
+      user-select: none;
+    }
+    .faq-question:hover { color: var(--accent); }
+    .faq-icon { font-size: 18px; color: var(--muted); flex-shrink: 0; transition: transform .2s; }
+    .faq-item.open .faq-icon { transform: rotate(45deg); }
+    .faq-answer {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .25s ease, padding .25s ease;
+    }
+    .faq-item.open .faq-answer { max-height: 200px; padding-bottom: 18px; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+    }
+    .footer-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .footer-logo { font-size: 14px; font-weight: 500; }
+    .footer-links { display: flex; align-items: center; gap: 24px; }
+    .footer-links a { font-size: 13px; color: var(--muted); transition: color .15s; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-copy { font-size: 13px; color: var(--muted); }
+
+    /* ── Divider ── */
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 0;
+    }
+
+    /* ── Animated Demo ── */
+    .hero-mockup { position: relative; }
+    .chrome-url {
+      flex: 1; margin: 0 8px; font-size: 10px; color: var(--muted);
+      text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .deploy-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; background: var(--accent); color: #09090b;
+      border: none; border-radius: 4px; font-size: 11px; font-weight: 600;
+      font-family: inherit; cursor: pointer; flex-shrink: 0; transition: opacity .15s;
+    }
+    .deploy-btn:hover { opacity: .8; }
+    #mockup-canvas-area { position: relative; overflow: hidden; }
+    .demo-block {
+      opacity: 0;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .demo-block.visible { opacity: 1; transform: none !important; }
+    .demo-nav-block {
+      background: #18181b; border: 1px solid var(--border); border-radius: 4px;
+      height: 34px; flex-shrink: 0; transform: translateY(-8px);
+      display: flex; align-items: center; padding: 0 12px;
+    }
+    .demo-nav-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+    .demo-nav-logo { font-size: 11px; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
+    .demo-nav-links { display: flex; gap: 14px; }
+    .demo-nav-links span { font-size: 10px; color: var(--muted); }
+    .demo-hero-block {
+      background: #18181b; border: 1px solid var(--border); border-radius: 4px;
+      padding: 14px 18px; flex-shrink: 0; transform: translateX(-16px);
+    }
+    .demo-hero-headline { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -.02em; line-height: 1.2; margin-bottom: 5px; }
+    .demo-hero-sub { font-size: 10px; color: var(--muted); margin-bottom: 10px; }
+    .demo-hero-cta {
+      display: inline-flex; align-items: center; padding: 4px 10px;
+      background: var(--accent); color: #09090b; font-size: 10px; font-weight: 600; border-radius: 3px;
+    }
+    .demo-card {
+      flex: 1; background: #18181b; border: 1px solid var(--border); border-radius: 4px;
+      overflow: hidden; display: flex; flex-direction: column;
+      transform: translateY(8px); min-width: 0;
+    }
+    .demo-card-img { height: 56px; flex-shrink: 0; }
+    .demo-card-info { padding: 7px 9px; }
+    .demo-card-name { font-size: 10px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+    .demo-card-price { font-size: 10px; color: var(--muted); }
+    .deploy-overlay {
+      position: absolute; inset: 0; background: rgba(9,9,11,.9);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; opacity: 0; transition: opacity 0.4s; pointer-events: none;
+    }
+    .deploy-overlay.visible { opacity: 1; }
+    .deploy-spinner-ring {
+      width: 36px; height: 36px; border: 2.5px solid #27272a;
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: demo-spin 0.75s linear infinite; opacity: 0; transition: opacity 0.2s;
+    }
+    .deploy-spinner-ring.visible { opacity: 1; }
+    @keyframes demo-spin { to { transform: rotate(360deg); } }
+    .deploy-success-content {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      opacity: 0; transform: scale(0.9); transition: opacity 0.35s, transform 0.35s;
+    }
+    .deploy-success-content.visible { opacity: 1; transform: scale(1); }
+    .deploy-checkmark { font-size: 28px; color: #22c55e; line-height: 1; }
+    .deploy-live-msg { font-size: 12px; font-weight: 500; color: var(--text); }
+    #demo-cursor-pos {
+      position: absolute; top: 0; left: 0; pointer-events: none; z-index: 20;
+      will-change: transform; transition: transform 0.45s cubic-bezier(.4,0,.2,1);
+    }
+    #demo-cursor {
+      width: 13px; height: 13px; background: white; border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,.55); transform: translate(-50%,-50%);
+      transition: transform 0.15s, opacity 0.3s; opacity: 0;
+    }
+    .mockup-ctrl-btn {
+      position: absolute; bottom: 10px; right: 10px; width: 26px; height: 26px;
+      background: rgba(24,24,27,.85); border: 1px solid var(--border); border-radius: 4px;
+      color: var(--muted); font-size: 11px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: color .15s; z-index: 15; line-height: 1;
+    }
+    .mockup-ctrl-btn:hover { color: var(--text); }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hero { padding: 72px 24px 48px; }
+      .feature-grid { grid-template-columns: 1fr; gap: 40px; }
+      .feature-grid.reversed { direction: ltr; }
+      .pricing-cards { grid-template-columns: 1fr; }
+      .pricing-card + .pricing-card { border-left: none; border-top: 1px solid var(--border); }
+      .footer-inner { flex-direction: column; text-align: center; }
+      .footer-links { flex-wrap: wrap; justify-content: center; }
+      .stat-row { flex-direction: column; gap: 12px; }
+      .template-grid { grid-template-columns: 1fr; }
+      .mockup-sidebar { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav id="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">tribox</a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="http://localhost:5173/templates">Templates</a></li>
+      <li><a href="http://localhost:5173/pricing">Pricing</a></li>
+      <li><a href="#">Docs</a></li>
+    </ul>
+    <div class="nav-right" id="nav-right">
+      <a href="http://localhost:5173/login" class="nav-login">Log in</a>
+      <a href="http://localhost:5173/signup" class="btn btn-ghost nav-start">Start free</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <span class="eyebrow">The website platform for small business</span>
+  <h1 class="hero-headline">
+    Build. Sell. Support.<br>
+    All in one box.
+  </h1>
+  <p class="hero-sub">
+    Design custom storefronts, launch high-converting templates, and deploy AI agents — without writing code.
+  </p>
+  <div class="hero-ctas">
+    <a href="http://localhost:5173/signup" class="btn btn-filled">Start building free</a>
+    <a href="#pricing" class="btn btn-text">See pricing</a>
+  </div>
+
+  <!-- Animated product demo -->
+  <div class="hero-mockup" id="hero-mockup">
+    <div class="mockup-chrome">
+      <div class="chrome-dot"></div>
+      <div class="chrome-dot"></div>
+      <div class="chrome-dot"></div>
+      <div class="chrome-url">mysite.tribox.app</div>
+      <button class="deploy-btn" id="deploy-btn">Deploy</button>
+    </div>
+    <div class="mockup-body">
+      <div class="mockup-sidebar">
+        <div class="sidebar-label">Components</div>
+        <div class="sidebar-item" id="si-hero"><div class="sidebar-item-dot"></div>Hero Section</div>
+        <div class="sidebar-item" id="si-products"><div class="sidebar-item-dot"></div>Product Grid</div>
+        <div class="sidebar-item" id="si-nav"><div class="sidebar-item-dot"></div>Navigation</div>
+        <div class="sidebar-item"><div class="sidebar-item-dot"></div>Pricing Table</div>
+        <div class="sidebar-item"><div class="sidebar-item-dot"></div>Testimonials</div>
+        <div class="sidebar-item"><div class="sidebar-item-dot"></div>Footer</div>
+      </div>
+      <div class="mockup-canvas" id="mockup-canvas-area">
+        <div class="demo-block demo-nav-block" id="demo-nav">
+          <div class="demo-nav-inner">
+            <div class="demo-nav-logo">tribox</div>
+            <div class="demo-nav-links"><span>Home</span><span>Shop</span><span>About</span></div>
+          </div>
+        </div>
+        <div class="demo-block demo-hero-block" id="demo-hero">
+          <div class="demo-hero-headline">Launch Your Store Today</div>
+          <div class="demo-hero-sub">Beautiful products. Seamless checkout.</div>
+          <div class="demo-hero-cta">Get Started</div>
+        </div>
+        <div class="canvas-block-row" style="flex:1;min-height:0">
+          <div class="demo-block demo-card" id="demo-card-1">
+            <div class="demo-card-img" style="background:linear-gradient(135deg,#27272a,#3f3f46)"></div>
+            <div class="demo-card-info"><div class="demo-card-name">Minimal Chair</div><div class="demo-card-price">$149</div></div>
+          </div>
+          <div class="demo-block demo-card" id="demo-card-2">
+            <div class="demo-card-img" style="background:linear-gradient(135deg,#1e293b,#334155)"></div>
+            <div class="demo-card-info"><div class="demo-card-name">Oak Shelf</div><div class="demo-card-price">$89</div></div>
+          </div>
+          <div class="demo-block demo-card" id="demo-card-3">
+            <div class="demo-card-img" style="background:linear-gradient(135deg,#1c1917,#292524)"></div>
+            <div class="demo-card-info"><div class="demo-card-name">Desk Lamp</div><div class="demo-card-price">$65</div></div>
+          </div>
+        </div>
+        <div class="deploy-overlay" id="deploy-overlay">
+          <div class="deploy-spinner-ring" id="deploy-spinner"></div>
+          <div class="deploy-success-content" id="deploy-success-content">
+            <div class="deploy-checkmark">&#10003;</div>
+            <div class="deploy-live-msg">mysite.tribox.app is live!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="demo-cursor-pos"><div id="demo-cursor"></div></div>
+    <button class="mockup-ctrl-btn" id="mockup-ctrl" title="Pause">&#9208;</button>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<!-- ── Section 1: The Canvas ── -->
+<section id="features">
+  <div class="container">
+    <div class="feature-grid">
+      <div>
+        <div class="section-label">01 — The Canvas</div>
+        <h2 class="section-title">Design visually.<br>Ship real code.</h2>
+        <p class="section-body">Every component you place is production-ready. Drag it, style it, publish it — the code writes itself underneath.</p>
+        <ul class="bullet-list">
+          <li>Pixel-perfect snap-to-grid</li>
+          <li>Real-time responsive preview</li>
+          <li>Global design tokens</li>
+        </ul>
+      </div>
+      <div class="builder-card">
+        <div class="builder-header">
+          <div class="builder-dot"></div>
+          <div class="builder-dot"></div>
+          <div class="builder-dot"></div>
+        </div>
+        <div class="builder-body">
+          <div class="builder-panel">
+            <div class="panel-heading">Layers</div>
+            <div class="panel-row sel">&#9632; Hero</div>
+            <div class="panel-row">&#9632; Nav</div>
+            <div class="panel-row">&#9632; Features</div>
+            <div class="panel-row">&#9632; CTA Block</div>
+            <div class="panel-row">&#9632; Footer</div>
+          </div>
+          <div class="builder-canvas">
+            <div class="b-block b-nav"></div>
+            <div class="b-block b-hero"></div>
+            <div class="b-row">
+              <div class="b-block b-card"></div>
+              <div class="b-block b-card"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<!-- ── Section 2: The Templates ── -->
+<section id="templates">
+  <div class="container">
+    <div class="feature-grid reversed">
+      <div class="template-grid">
+        <div class="template-card">
+          <div class="template-card-header">
+            <div class="template-dot"></div><div class="template-dot"></div>
+          </div>
+          <div class="template-body">
+            <div class="t-block t-tall"></div>
+            <div class="t-block t-short"></div>
+            <div class="t-row"><div class="t-chip"></div><div class="t-chip"></div></div>
+          </div>
+          <div class="template-label">Store</div>
+        </div>
+        <div class="template-card">
+          <div class="template-card-header">
+            <div class="template-dot"></div><div class="template-dot"></div>
+          </div>
+          <div class="template-body">
+            <div class="t-block" style="height:24px;"></div>
+            <div class="t-block t-tall"></div>
+            <div class="t-block t-short"></div>
+          </div>
+          <div class="template-label">Agency</div>
+        </div>
+        <div class="template-card">
+          <div class="template-card-header">
+            <div class="template-dot"></div><div class="template-dot"></div>
+          </div>
+          <div class="template-body">
+            <div class="t-row"><div class="t-chip"></div><div class="t-chip"></div><div class="t-chip"></div></div>
+            <div class="t-block t-tall"></div>
+            <div class="t-block t-short"></div>
+          </div>
+          <div class="template-label">Portfolio</div>
+        </div>
+        <div class="template-card">
+          <div class="template-card-header">
+            <div class="template-dot"></div><div class="template-dot"></div>
+          </div>
+          <div class="template-body">
+            <div class="t-block" style="height:20px;"></div>
+            <div class="t-row"><div class="t-chip"></div><div class="t-chip"></div></div>
+            <div class="t-block t-tall"></div>
+          </div>
+          <div class="template-label">SaaS</div>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">02 — The Templates</div>
+        <h2 class="section-title">Business in a box.</h2>
+        <p class="section-body">Not just layouts — full business kits with payments, databases, and logic built in.</p>
+        <div class="stat-row">
+          <div class="stat-box">
+            <div class="stat-value">99/100</div>
+            <div class="stat-label">Lighthouse Score</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">+24%</div>
+            <div class="stat-label">Conversion vs Industry</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<!-- ── Section 3: The Agent ── -->
+<section id="agent">
+  <div class="container">
+    <div class="feature-grid">
+      <div>
+        <div class="section-label">03 — The Agent</div>
+        <h2 class="section-title">Sells while you sleep.</h2>
+        <p class="section-body">One script tag. Your visitors get instant answers and order tracking. You get conversions.</p>
+        <div class="code-block">
+          <span class="code-tag">&lt;tribox-agent</span>
+          <span class="code-attr"> key</span>=<span class="code-val">"sk_live_..."</span>
+          <span class="code-tag">&gt;&lt;/tribox-agent&gt;</span>
+        </div>
+      </div>
+      <div class="chat-card">
+        <div class="chat-header">
+          <div class="chat-avatar">T</div>
+          <div class="chat-info">
+            <div class="chat-name">Tribox Assistant</div>
+            <div class="chat-status"><span class="status-dot"></span>Online</div>
+          </div>
+        </div>
+        <div class="chat-messages">
+          <div class="msg msg-user">
+            <div class="msg-bubble">Hi! Is the Minimal Chair still in stock?</div>
+          </div>
+          <div class="msg msg-agent">
+            <div class="msg-bubble">Yes! The Minimal Chair is in stock in all 3 colorways. Would you like to add it to your cart, or do you have sizing questions first?</div>
+          </div>
+          <div class="msg msg-user">
+            <div class="msg-bubble">Great. How long does shipping take?</div>
+          </div>
+          <div class="msg msg-agent">
+            <div class="msg-bubble">Standard shipping is 3–5 business days. You're eligible for free shipping on orders over $75. Your item qualifies!</div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <div class="chat-input-fake">Type a message...</div>
+          <div class="chat-send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<!-- ── Pricing ── -->
+<section class="pricing-section" id="pricing">
+  <div class="container">
+    <div class="pricing-header">
+      <h2 class="pricing-title">Pricing</h2>
+      <p class="pricing-sub">Start free. No credit card. Upgrade when revenue does.</p>
+      <div class="toggle-wrap">
+        <span class="toggle-label active" id="lbl-monthly">Monthly</span>
+        <label class="toggle">
+          <input type="checkbox" id="billing-toggle" />
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+        <span class="toggle-label" id="lbl-yearly">Yearly</span>
+        <span class="save-badge">Save 20%</span>
+      </div>
+    </div>
+
+    <div class="pricing-cards">
+      <!-- Free -->
+      <div class="pricing-card">
+        <div class="plan-name">Free</div>
+        <div class="plan-price">$0</div>
+        <div class="plan-period">per month</div>
+        <div class="plan-desc">For side projects and experiments</div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> 1 site</li>
+          <li><span class="check">✓</span> Basic templates</li>
+          <li><span class="check">✓</span> Tribox subdomain</li>
+          <li><span class="check">✓</span> 50 AI messages/day</li>
+          <li><span class="check">✓</span> Community support</li>
+        </ul>
+        <a href="http://localhost:5173/signup" class="btn btn-ghost" style="width:100%;justify-content:center;">Get started</a>
+      </div>
+      <!-- Pro -->
+      <div class="pricing-card featured">
+        <span class="popular-badge">Most popular</span>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price" id="pro-price">$29</div>
+        <div class="plan-period" id="pro-period">per month</div>
+        <div class="plan-desc">For businesses ready to grow</div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> Unlimited sites</li>
+          <li><span class="check">✓</span> All templates</li>
+          <li><span class="check">✓</span> Unlimited AI Agent</li>
+          <li><span class="check">✓</span> Custom domain</li>
+          <li><span class="check">✓</span> 10GB storage</li>
+          <li><span class="check">✓</span> Priority support</li>
+        </ul>
+        <a href="http://localhost:5173/pricing" class="btn btn-filled" style="width:100%;justify-content:center;">Upgrade to Pro</a>
+      </div>
+    </div>
+
+    <!-- Compare table -->
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Free</th>
+          <th>Pro</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Sites</td>
+          <td>1</td>
+          <td>Unlimited</td>
+        </tr>
+        <tr>
+          <td>Templates</td>
+          <td>Basic</td>
+          <td>All</td>
+        </tr>
+        <tr>
+          <td>AI Agent</td>
+          <td>50 messages/day</td>
+          <td>Unlimited</td>
+        </tr>
+        <tr>
+          <td>Custom domain</td>
+          <td><span class="t-dash">—</span></td>
+          <td><span class="t-check">✓</span></td>
+        </tr>
+        <tr>
+          <td>Storage</td>
+          <td>500MB</td>
+          <td>10GB</td>
+        </tr>
+        <tr>
+          <td>Support</td>
+          <td>Community</td>
+          <td>Priority</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- FAQ -->
+    <div class="faq">
+      <div class="faq-title">FAQ</div>
+      <div class="faq-item">
+        <div class="faq-question">
+          Is there a free trial?
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-answer">No trial needed — the Free plan is free forever. Build and publish one site with 50 AI messages a day, and upgrade to Pro only when you need more.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-question">
+          Can I switch plans or cancel later?
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-answer">Yes. Upgrade or cancel anytime from your account — billing is handled through the Stripe customer portal, and your plan stays active until the end of the billing period.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-question">
+          What payment methods do you accept?
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-answer">All major credit cards, processed securely by Stripe.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-question">
+          What is your refund policy?
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-answer">Refunds are handled case-by-case — reach out to support@tribox.app and we'll make it right.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="footer-inner">
+    <span class="footer-logo">tribox</span>
+    <nav class="footer-links">
+      <a href="#">Docs</a>
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="#">Contact</a>
+    </nav>
+    <span class="footer-copy">© 2026 Tribox</span>
+  </div>
+</footer>
+
+<script>
+  // Sticky nav border
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 8);
+  }, { passive: true });
+
+  // Billing toggle
+  const toggle = document.getElementById('billing-toggle');
+  const proPrice = document.getElementById('pro-price');
+  const proPeriod = document.getElementById('pro-period');
+  const lblMonthly = document.getElementById('lbl-monthly');
+  const lblYearly = document.getElementById('lbl-yearly');
+
+  toggle.addEventListener('change', () => {
+    if (toggle.checked) {
+      proPrice.textContent = '$23';
+      proPeriod.textContent = 'per month, billed yearly';
+      lblMonthly.classList.remove('active');
+      lblYearly.classList.add('active');
+    } else {
+      proPrice.textContent = '$29';
+      proPeriod.textContent = 'per month';
+      lblMonthly.classList.add('active');
+      lblYearly.classList.remove('active');
+    }
+  });
+
+  // ── Animated demo ──
+  (function () {
+    var mockup = document.getElementById('hero-mockup');
+    if (!mockup) return;
+    var cursorPos = document.getElementById('demo-cursor-pos');
+    var cursor    = document.getElementById('demo-cursor');
+    var siHero    = document.getElementById('si-hero');
+    var siProd    = document.getElementById('si-products');
+    var siNav     = document.getElementById('si-nav');
+    var deployBtn = document.getElementById('deploy-btn');
+    var dHero     = document.getElementById('demo-hero');
+    var dNav      = document.getElementById('demo-nav');
+    var dC1       = document.getElementById('demo-card-1');
+    var dC2       = document.getElementById('demo-card-2');
+    var dC3       = document.getElementById('demo-card-3');
+    var overlay   = document.getElementById('deploy-overlay');
+    var spinner   = document.getElementById('deploy-spinner');
+    var success   = document.getElementById('deploy-success-content');
+    var ctrl      = document.getElementById('mockup-ctrl');
+
+    var timers = [], paused = false;
+
+    function center(el) {
+      var er = el.getBoundingClientRect(), mr = mockup.getBoundingClientRect();
+      return { x: er.left - mr.left + er.width / 2, y: er.top - mr.top + er.height / 2 };
+    }
+    function move(el, ms) {
+      var p = center(el);
+      cursorPos.style.transitionDuration = (ms == null ? 420 : ms) + 'ms';
+      cursorPos.style.transform = 'translate(' + p.x + 'px,' + p.y + 'px)';
+    }
+    function click() {
+      cursor.style.transform = 'translate(-50%,-50%) scale(0.6)';
+      t(150, function () { cursor.style.transform = 'translate(-50%,-50%) scale(1)'; });
+    }
+    function setActive(el) {
+      [siHero, siProd, siNav].forEach(function (s) { s.classList.remove('active'); });
+      if (el) el.classList.add('active');
+    }
+    function t(ms, fn) { timers.push(setTimeout(fn, ms)); }
+    function show(el) { el.classList.add('visible'); }
+
+    function reset() {
+      timers.forEach(clearTimeout); timers = [];
+      cursor.style.transition = '';
+      cursor.style.opacity = '0';
+      cursor.style.transform = 'translate(-50%,-50%) scale(1)';
+      cursorPos.style.transition = 'none';
+      cursorPos.style.transform = 'translate(0,0)';
+      [dHero, dNav, dC1, dC2, dC3].forEach(function (el) {
+        el.style.transition = ''; el.style.opacity = ''; el.classList.remove('visible');
+      });
+      overlay.style.transition = ''; overlay.style.opacity = ''; overlay.classList.remove('visible');
+      spinner.classList.remove('visible');
+      success.classList.remove('visible');
+      setActive(null);
+    }
+
+    function run() {
+      if (paused) return;
+      // Silently position cursor at first target before fading in
+      requestAnimationFrame(function () {
+        var p = center(siHero);
+        cursorPos.style.transform = 'translate(' + p.x + 'px,' + p.y + 'px)';
+        requestAnimationFrame(function () { cursorPos.style.transition = ''; });
+      });
+
+      // Step 1 – Hero Section → hero block
+      t(400,  function () { cursor.style.opacity = '1'; setActive(siHero); });
+      t(650,  click);
+      t(900,  function () { show(dHero); });
+
+      // Step 2 – Product Grid → 3 cards (staggered)
+      t(2000, function () { move(siProd); setActive(siProd); });
+      t(2400, click);
+      t(2600, function () { show(dC1); });
+      t(2800, function () { show(dC2); });
+      t(3000, function () { show(dC3); });
+
+      // Step 3 – Navigation → nav block
+      t(4000, function () { move(siNav); setActive(siNav); });
+      t(4400, click);
+      t(4600, function () { show(dNav); });
+
+      // Step 4 – Deploy → spinner → success
+      t(6000, function () { move(deployBtn, 600); setActive(null); });
+      t(6550, function () { click(); show(overlay); t(100, function () { show(spinner); }); });
+      t(7300, function () { spinner.classList.remove('visible'); show(success); });
+
+      // Step 5 – Pause then fade out
+      t(9000, function () {
+        var fade = 'opacity 0.7s ease';
+        [dHero, dNav, dC1, dC2, dC3].forEach(function (el) {
+          el.style.transition = fade; el.style.opacity = '0';
+        });
+        overlay.style.transition = fade; overlay.style.opacity = '0';
+        cursor.style.transition = fade; cursor.style.opacity = '0';
+      });
+      t(10000, function () { reset(); run(); });
+    }
+
+    ctrl.addEventListener('click', function () {
+      paused = !paused;
+      ctrl.innerHTML = paused ? '&#9654;' : '&#9208;';
+      ctrl.title = paused ? 'Play' : 'Pause';
+      if (!paused) { reset(); run(); }
+      else { timers.forEach(clearTimeout); timers = []; }
+    });
+
+    run();
+  }());
+
+  // FAQ accordion
+  document.querySelectorAll('.faq-question').forEach(q => {
+    q.addEventListener('click', () => {
+      const item = q.parentElement;
+      const isOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+      if (!isOpen) item.classList.add('open');
+    });
+  });
+</script>
+
+<!-- ── Auth-aware nav ──
+     The landing page is static HTML served from Express (port 3000), so it
+     can't read the React app's auth context directly. Instead we read the
+     Supabase session from the browser's storage (the same project the SPA on
+     port 5173 uses) and, if the visitor is logged in, swap "Log in / Start
+     free" for a Dashboard button + their email. -->
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+  // Same project + anon key as the React app (client/.env).
+  const SUPABASE_URL = 'https://phjzqcnohbztvybwnfto.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoanpxY25vaGJ6dHZ5YnduZnRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDgwNzQsImV4cCI6MjA5NTM4NDA3NH0.5B5Tnpv2IeIYCECsTbjRVdJzhL8aYHKBg5oTxVbyWf8';
+  // Where the SPA lives. Hardcoded for now; same domain once deployed.
+  const APP_URL = 'http://localhost:5173';
+
+  function renderLoggedIn(user) {
+    const navRight = document.getElementById('nav-right');
+    if (!navRight) return;
+    navRight.innerHTML = '';
+
+    const email = document.createElement('span');
+    email.className = 'nav-user-email';
+    email.textContent = user.email || '';
+
+    const dashboard = document.createElement('a');
+    dashboard.href = APP_URL + '/dashboard';
+    dashboard.className = 'btn btn-ghost nav-start';
+    dashboard.textContent = 'Dashboard';
+
+    navRight.append(email, dashboard);
+  }
+
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) renderLoggedIn(session.user);
+    // Keep the nav in sync if auth changes while the page is open.
+    supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) renderLoggedIn(session.user);
+    });
+  } catch (err) {
+    // Network/CDN failure: leave the default "Log in / Start free" nav in place.
+    console.warn('Auth nav check failed:', err);
+  }
+</script>
+
+<!-- Live demo of "03 — The Agent": our own chat widget, powered by the
+     dedicated Tribox site row (db/seed-tribox.sql). -->
+<script src="/widget.js" data-api-key="tribox_landing_key"></script>
+</body>
+</html>
