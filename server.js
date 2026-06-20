@@ -954,7 +954,21 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:"],
+      // Editor previews and rendered blocks show user-supplied image URLs
+      // (any https host) plus Supabase Storage uploads and data: URIs.
+      imgSrc: ["'self'", "data:", "https:"],
+      // CSP falls back to default-src when a directive is absent, so without
+      // this the browser blocks the SPA from reaching Supabase (auth/REST/
+      // realtime) — signup/login fail in production. Dev hides this because
+      // the Vite proxy makes those calls same-origin. The exact project URL
+      // is read from env (covers custom domains); the wildcards cover the
+      // default *.supabase.co REST/auth (https) and realtime (wss) origins.
+      connectSrc: [
+        "'self'",
+        "https://*.supabase.co",
+        "wss://*.supabase.co",
+        process.env.SUPABASE_URL,
+      ].filter(Boolean),
     }
   }
 }));
