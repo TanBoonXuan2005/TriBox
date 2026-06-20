@@ -346,18 +346,23 @@ export default function Pricing() {
   const [billingCycle, setBillingCycle] = useState('monthly')
   const [openFaq, setOpenFaq] = useState(null)
   const [upgrading, setUpgrading] = useState(false)
-  const [isPro, setIsPro] = useState(false)
+  // null = not logged in / unknown; otherwise 'free' | 'pro'. Same source of
+  // truth (fetchSubscription → /api/me/subscription) the navbar and /account use.
+  const [tier, setTier] = useState(null)
   const navigate = useNavigate()
 
-  // Reflect the user's account-level plan on the Pro card. If they're already
-  // Pro, the card shows "Current plan" instead of an upgrade button.
+  // Reflect the user's account-level plan on the plan cards. If they're already
+  // Pro, the Pro card shows "Current plan" instead of an upgrade button.
   useEffect(() => {
     let cancelled = false
     fetchSubscription().then((sub) => {
-      if (!cancelled && sub) setIsPro(sub.tier === 'pro')
+      if (!cancelled) setTier(sub ? sub.tier : null)
     })
     return () => { cancelled = true }
   }, [])
+
+  const isPro = tier === 'pro'
+  const isFree = tier === 'free'
 
   const proPrice = billingCycle === 'yearly' ? 23 : 29
   const yearly = billingCycle === 'yearly'
@@ -436,7 +441,15 @@ export default function Pricing() {
                   </li>
                 ))}
               </ul>
-              <Link to="/signup" style={s.planBtn(false)}>Get started free</Link>
+              {isPro ? (
+                <Link to="/account" style={s.planBtn(false)}>Downgrade</Link>
+              ) : isFree ? (
+                <div style={s.currentPlanBtn}>
+                  <span>✓</span> Current plan
+                </div>
+              ) : (
+                <Link to="/signup" style={s.planBtn(false)}>Get started free</Link>
+              )}
             </div>
 
             {/* Pro */}
