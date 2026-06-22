@@ -18,6 +18,13 @@ const OBJECT_FIT_OPTIONS = ['cover', 'contain']
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5MB
 
+// A nav link may be a plain string (legacy: display text) or an object
+// { label, type:'page'|'url', pageId, url }. The editor canvas only needs the
+// display label — real hrefs are resolved server-side at publish time.
+function navLinkLabel(link) {
+  return typeof link === 'string' ? link : (link && link.label) || ''
+}
+
 const BLOCK_DEFINITIONS = {
   navbar: {
     label: 'Navbar',
@@ -32,8 +39,8 @@ const BLOCK_DEFINITIONS = {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
           <div style={{ display: 'flex', gap: '26px' }}>
-            {p.links.map((l, i) => (
-              <span key={i} style={{ fontSize: '14px', color: '#555', fontWeight: 500 }}>{l}</span>
+            {(p.links || []).map((l, i) => (
+              <span key={i} style={{ fontSize: '14px', color: '#555', fontWeight: 500 }}>{navLinkLabel(l)}</span>
             ))}
           </div>
           <span style={{
@@ -222,8 +229,8 @@ const BLOCK_DEFINITIONS = {
       }}>
         <span style={{ fontSize: '13px' }}>{p.text}</span>
         <div style={{ display: 'flex', gap: '22px' }}>
-          {p.links.map((l, i) => (
-            <span key={i} style={{ fontSize: '13px', color: '#a1a1aa' }}>{l}</span>
+          {(p.links || []).map((l, i) => (
+            <span key={i} style={{ fontSize: '13px', color: '#a1a1aa' }}>{navLinkLabel(l)}</span>
           ))}
         </div>
       </footer>

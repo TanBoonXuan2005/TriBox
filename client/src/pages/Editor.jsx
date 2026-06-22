@@ -628,6 +628,163 @@ const s = {
     fontSize: '13px',
   },
 
+  // ── PAGE TAB BAR ────────────────────────────────────────────
+  pageBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    flexShrink: 0,
+    height: '38px',
+    padding: '0 8px',
+    borderBottom: '0.5px solid rgba(255,255,255,0.07)',
+    background: '#0c0c0e',
+    overflowX: 'auto',
+    overflowY: 'hidden',
+  },
+  pageTab: (active) => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    height: '27px',
+    padding: '0 6px 0 11px',
+    borderRadius: '7px',
+    cursor: 'pointer',
+    flexShrink: 0,
+    maxWidth: '180px',
+    border: active ? '0.5px solid rgba(255,255,255,0.12)' : '0.5px solid transparent',
+    background: active ? 'rgba(255,255,255,0.09)' : 'transparent',
+    color: active ? '#fafafa' : 'rgba(255,255,255,0.5)',
+    fontSize: '12.5px',
+    fontWeight: active ? 600 : 500,
+    fontFamily: 'inherit',
+    transition: 'background 0.1s, color 0.1s',
+  }),
+  pageTabName: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  pageHomeDot: {
+    fontSize: '10px',
+    color: '#f5b301',
+    flexShrink: 0,
+    lineHeight: 1,
+  },
+  pageTabMenuBtn: (active) => ({
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '17px',
+    height: '17px',
+    border: 'none',
+    borderRadius: '4px',
+    background: 'transparent',
+    color: active ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.3)',
+    cursor: 'pointer',
+    padding: 0,
+    fontFamily: 'inherit',
+    flexShrink: 0,
+  }),
+  pageAddBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '26px',
+    height: '26px',
+    flexShrink: 0,
+    border: '0.5px dashed rgba(255,255,255,0.18)',
+    borderRadius: '7px',
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.5)',
+    cursor: 'pointer',
+    fontSize: '16px',
+    lineHeight: 1,
+    fontFamily: 'inherit',
+  },
+  pageMenu: {
+    position: 'absolute',
+    zIndex: 50,
+    minWidth: '160px',
+    padding: '5px',
+    borderRadius: '9px',
+    background: '#161618',
+    border: '0.5px solid rgba(255,255,255,0.12)',
+    boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1px',
+  },
+  pageMenuItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '9px',
+    padding: '8px 10px',
+    borderRadius: '6px',
+    border: 'none',
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: '12.5px',
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+    textAlign: 'left',
+    width: '100%',
+  },
+  pageMenuItemDanger: {
+    color: '#f87171',
+  },
+  pageMenuDivider: {
+    height: '0.5px',
+    background: 'rgba(255,255,255,0.08)',
+    margin: '4px 2px',
+  },
+  pageModalOverlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 100,
+    background: 'rgba(0,0,0,0.55)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px',
+  },
+  pageModalCard: {
+    width: '100%',
+    maxWidth: '380px',
+    background: '#141416',
+    border: '0.5px solid rgba(255,255,255,0.12)',
+    borderRadius: '14px',
+    padding: '22px',
+    boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+  },
+  pageModalTitle: {
+    fontSize: '15px',
+    fontWeight: 700,
+    color: '#fafafa',
+    margin: '0 0 16px',
+  },
+  pageModalActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '8px',
+    marginTop: '18px',
+  },
+  pageModalBtn: (primary) => ({
+    padding: '8px 16px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    border: primary ? 'none' : '0.5px solid rgba(255,255,255,0.14)',
+    background: primary ? '#e4e4e7' : 'transparent',
+    color: primary ? '#09090b' : 'rgba(255,255,255,0.7)',
+  }),
+  pageModalError: {
+    marginTop: '10px',
+    fontSize: '12px',
+    color: '#f87171',
+  },
+
   canvasArea: {
     flex: 1,
     // min-height:0 lets this flex child shrink below its content height so
@@ -1840,7 +1997,100 @@ function Field({ label, children }) {
   )
 }
 
-function PropertiesPanel({ block, siteId, onChangeProp, onChangeStyle, onChangeStyleMulti, onDelete }) {
+/* A link in a Navbar / Footer. May be a legacy plain string (text only) or an
+   object { label, type:'page'|'url', pageId, url }. The editor normalises to the
+   object form for editing and serialises back to a string when "no link". */
+function normalizeNavLink(link) {
+  if (typeof link === 'string') return { label: link, type: 'none', pageId: '', url: '' }
+  return {
+    label: link?.label || '',
+    type: link?.type === 'page' || link?.type === 'url' ? link.type : 'none',
+    pageId: link?.pageId || '',
+    url: link?.url || '',
+  }
+}
+function serializeNavLink(obj) {
+  if (obj.type === 'page') return { label: obj.label, type: 'page', pageId: obj.pageId }
+  if (obj.type === 'url') return { label: obj.label, type: 'url', url: obj.url }
+  return obj.label // "no link" → plain string (keeps data backward-compatible)
+}
+
+/* Per-link editor for Navbar / Footer links: a label, a destination dropdown
+   (a page of this site, an external URL, or no link), and a URL field when
+   "External URL" is chosen. */
+function NavLinksField({ links, pages, onChange }) {
+  const items = Array.isArray(links) ? links : []
+
+  function update(idx, nextObj) {
+    const copy = items.slice()
+    copy[idx] = serializeNavLink(nextObj)
+    onChange(copy)
+  }
+  function remove(idx) { onChange(items.filter((_, i) => i !== idx)) }
+  function add() { onChange([...items, 'Link']) }
+
+  function onDestChange(idx, obj, value) {
+    if (value === 'none') update(idx, { ...obj, type: 'none' })
+    else if (value === 'url') update(idx, { ...obj, type: 'url' })
+    else if (value.startsWith('page:')) update(idx, { ...obj, type: 'page', pageId: value.slice(5) })
+  }
+
+  return (
+    <div>
+      {items.map((raw, idx) => {
+        const link = normalizeNavLink(raw)
+        const destValue = link.type === 'page' ? `page:${link.pageId}` : link.type === 'url' ? 'url' : 'none'
+        return (
+          <div key={idx} style={s.arrayItem}>
+            <div style={s.arrayItemBody}>
+              <input
+                type="text"
+                value={link.label}
+                placeholder="Link text"
+                onChange={(e) => update(idx, { ...link, label: e.target.value })}
+                style={s.input}
+              />
+              <select
+                value={destValue}
+                onChange={(e) => onDestChange(idx, link, e.target.value)}
+                style={s.select}
+              >
+                <option value="none">No link (text only)</option>
+                {pages.length > 0 && (
+                  <optgroup label="Pages">
+                    {pages.map((p) => (
+                      <option key={p.id} value={`page:${p.id}`}>
+                        {p.name}{p.is_home ? ' (home)' : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                <option value="url">External URL…</option>
+              </select>
+              {link.type === 'url' && (
+                <input
+                  type="text"
+                  value={link.url}
+                  placeholder="https://example.com"
+                  onChange={(e) => update(idx, { ...link, url: e.target.value })}
+                  style={s.input}
+                />
+              )}
+              {link.type === 'page' && !pages.some((p) => p.id === link.pageId) && (
+                <div style={{ ...s.hint, color: '#f59e0b' }}>Linked page was removed — pick another.</div>
+              )}
+            </div>
+            <button type="button" title="Remove" style={s.removeBtn} onClick={() => remove(idx)}>×</button>
+          </div>
+        )
+      })}
+      <button type="button" style={s.addBtn} onClick={add}>+ Add link</button>
+    </div>
+  )
+}
+
+function PropertiesPanel({ block, siteId, pages = [], onChangeProp, onChangeStyle, onChangeStyleMulti, onDelete }) {
+  const isNavLinks = (block.type === 'navbar' || block.type === 'footer')
   const def = BLOCK_DEFINITIONS[block.type]
   const isImage = block.type === 'image'
   const st = normalizeStyle(block.props.style)
@@ -1870,7 +2120,11 @@ function PropertiesPanel({ block, siteId, onChangeProp, onChangeStyle, onChangeS
         {isImage && <ImageFields block={block} siteId={siteId} onChangeProp={onChangeProp} />}
         {content.map(([key, val]) => (
           <Field key={key} label={humanize(key)}>
-            <PropField fieldKey={key} value={val} onChange={(v) => onChangeProp(key, v)} />
+            {isNavLinks && key === 'links' ? (
+              <NavLinksField links={val} pages={pages} onChange={(v) => onChangeProp(key, v)} />
+            ) : (
+              <PropField fieldKey={key} value={val} onChange={(v) => onChangeProp(key, v)} />
+            )}
           </Field>
         ))}
         {colorProps.map(([key, val]) => (
@@ -2131,8 +2385,19 @@ export default function Editor() {
   }
 
   // Undo/redo history. `past`/`future` hold snapshots of the blocks array.
+  // These always reflect the ACTIVE page; switching pages saves the outgoing
+  // page's history into pageStatesRef and restores the incoming page's.
   const [past, setPast] = useState([])
   const [future, setFuture] = useState([])
+
+  // ── Multi-page state ───────────────────────────────────────────
+  // `pages` is the ordered page metadata for the tab bar; the live blocks +
+  // undo/redo for each page live in pageStatesRef (keyed by page id) so each
+  // page keeps its own history and editing one page never touches another.
+  const [pages, setPages] = useState([])           // [{ id, name, page_slug, sort_order, is_home }]
+  const [activePageId, setActivePageId] = useState(null)
+  const pageStatesRef = useRef({})                 // { [pageId]: { blocks, past, future, dirty } }
+  const activePageIdRef = useRef(null); activePageIdRef.current = activePageId
 
   // Refs that mirror live values for use inside timers / async closures.
   const blocksRef = useRef(blocks); blocksRef.current = blocks
@@ -2146,7 +2411,7 @@ export default function Editor() {
 
   useEffect(() => {
     if (!siteId) { setLoading(false); return }
-    fetchContent()
+    fetchPages()
   }, [siteId])
 
   // Mark dirty + queue autosave whenever `blocks` changes. This effect does NOT
@@ -2171,26 +2436,44 @@ export default function Editor() {
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
   }, [])
 
-  async function fetchContent() {
+  // Load all pages (with their blocks) and hydrate the per-page state map, then
+  // open the home page. Falls back gracefully so the canvas still renders.
+  async function fetchPages() {
     setLoading(true)
     const { data: { session } } = await supabase.auth.getSession()
     try {
-      const res = await fetch(`/api/sites/${siteId}/content`, {
+      const res = await fetch(`/api/sites/${siteId}/pages`, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       })
       if (res.ok) {
         const data = await res.json()
-        const loaded = Array.isArray(data.blocks) ? data.blocks : []
-        skipDirty.current = true         // loading isn't a user edit
-        setBlocks(loaded)                // effect consumes skipDirty + sets baseline
-        setPast([])
-        setFuture([])
-        setDirty(false)
+        const list = Array.isArray(data.pages) ? data.pages : []
+        const states = {}
+        for (const p of list) {
+          states[p.id] = {
+            blocks: Array.isArray(p.blocks) ? p.blocks : [],
+            past: [], future: [], dirty: false,
+          }
+        }
+        pageStatesRef.current = states
+        const meta = list.map(({ id, name, page_slug, sort_order, is_home }) =>
+          ({ id, name, page_slug, sort_order, is_home }))
+        setPages(meta)
+
+        const home = list.find((p) => p.is_home) || list[0]
+        if (home) {
+          setActivePageId(home.id)
+          skipDirty.current = true       // loading isn't a user edit
+          setBlocks(states[home.id].blocks)
+          setPast([])
+          setFuture([])
+          setDirty(false)
+        }
       } else {
-        console.warn('GET content failed:', res.status, await res.text())
+        console.warn('GET pages failed:', res.status, await res.text())
       }
     } catch (err) {
-      console.error('GET content error:', err)
+      console.error('GET pages error:', err)
       // silent — will show empty canvas
     } finally {
       setLoading(false)
@@ -2200,52 +2483,103 @@ export default function Editor() {
   function scheduleAutosave() {
     if (!siteId) return
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
-    autosaveTimer.current = setTimeout(() => { saveContent({ silent: true }) }, 2000)
+    autosaveTimer.current = setTimeout(() => { saveActivePage({ silent: true }) }, 2000)
   }
 
-  async function saveContent({ silent = false } = {}) {
-    if (!siteId) return
-    if (autosaveTimer.current) { clearTimeout(autosaveTimer.current); autosaveTimer.current = null }
-    const payload = blocksRef.current   // a fresh array on every edit → ref-comparable
+  // Persist a specific page's blocks via PATCH /pages/:pageId. Used for both the
+  // active page (autosave / Save button) and outgoing pages on tab switch, so it
+  // takes an explicit pageId + blocks rather than reading live state.
+  async function savePage(pageId, blocks, { silent = false } = {}) {
+    if (!siteId || !pageId) return
+    const st = pageStatesRef.current[pageId]
     setSaving(true)
     if (!silent) setSaveState('saving')
     const { data: { session } } = await supabase.auth.getSession()
     try {
-      const res = await fetch(`/api/sites/${siteId}/content`, {
-        method: 'PUT',
+      const res = await fetch(`/api/sites/${siteId}/pages/${pageId}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({ blocks: payload }),
+        body: JSON.stringify({ blocks }),
       })
       if (!res.ok) {
-        console.error('PUT content failed:', res.status, await res.text())
+        console.error('PATCH page blocks failed:', res.status, await res.text())
         setSaveState('error')
         return
       }
-      // Only clear "dirty" if nothing changed while the request was in flight.
-      if (blocksRef.current === payload) setDirty(false)
+      if (st) { st.blocks = blocks; st.dirty = false }
+      // Only clear the active "dirty" flag if this was the active page and
+      // nothing changed while the request was in flight.
+      if (pageId === activePageIdRef.current && blocksRef.current === blocks) setDirty(false)
       if (!silent) {
         setSaveState('saved')
-        setTimeout(() => setSaveState((st) => (st === 'saved' ? 'idle' : st)), 1500)
+        setTimeout(() => setSaveState((s) => (s === 'saved' ? 'idle' : s)), 1500)
       }
     } catch (err) {
-      console.error('PUT content error:', err)
+      console.error('PATCH page blocks error:', err)
       setSaveState('error')
     } finally {
       setSaving(false)
     }
   }
 
-  // Return to the dashboard. Content auto-saves, so we don't prompt — but if a
-  // save is queued or in flight we flush it first (showing a brief "Saving…")
-  // so no edits are lost when we leave.
+  function saveActivePage({ silent = false } = {}) {
+    if (autosaveTimer.current) { clearTimeout(autosaveTimer.current); autosaveTimer.current = null }
+    return savePage(activePageIdRef.current, blocksRef.current, { silent })
+  }
+
+  // Save every page that has unsaved edits (used before leaving / publishing).
+  async function flushAllDirty() {
+    if (autosaveTimer.current) { clearTimeout(autosaveTimer.current); autosaveTimer.current = null }
+    // Sync the active page's live blocks into the map first.
+    const activeId = activePageIdRef.current
+    if (activeId && pageStatesRef.current[activeId]) {
+      pageStatesRef.current[activeId].blocks = blocksRef.current
+      if (dirty) pageStatesRef.current[activeId].dirty = true
+    }
+    const entries = Object.entries(pageStatesRef.current)
+    for (const [pageId, st] of entries) {
+      if (st.dirty || pageId === activeId) {
+        try { await savePage(pageId, st.blocks, { silent: true }) } catch { /* keep going */ }
+      }
+    }
+  }
+
+  // Switch which page is being edited. Stashes the outgoing page's live blocks +
+  // history into the map (and silently persists them), then hydrates the
+  // incoming page's blocks + history.
+  function switchPage(targetId) {
+    if (!targetId || targetId === activePageIdRef.current) return
+    const outId = activePageIdRef.current
+    const outBlocks = blocksRef.current
+    if (outId && pageStatesRef.current[outId]) {
+      const outState = pageStatesRef.current[outId]
+      outState.blocks = outBlocks
+      outState.past = past
+      outState.future = future
+      outState.dirty = dirty
+      if (dirty) savePage(outId, outBlocks, { silent: true })
+    }
+    const next = pageStatesRef.current[targetId]
+    if (!next) return
+    setActivePageId(targetId)
+    setSelectedId(null)
+    skipDirty.current = true
+    setBlocks(next.blocks)
+    setPast(next.past || [])
+    setFuture(next.future || [])
+    setDirty(!!next.dirty)
+  }
+
+  // Return to the dashboard. Pages auto-save, so we don't prompt — but flush any
+  // pending edits first (showing a brief "Saving…") so nothing is lost.
   async function handleBack() {
     if (siteId && (dirty || saving || autosaveTimer.current)) {
       setLeaving(true)
       try {
-        await saveContent({ silent: true })
+        await flushAllDirty()
       } catch {
         // Navigate anyway — the dashboard is more useful than a stuck editor.
       }
@@ -2398,8 +2732,9 @@ export default function Editor() {
     if (!siteId || deploying) return
     setDeploying(true)
     setDeployError(null)
-    // Persist the latest edits first so the published page matches the canvas.
-    try { await saveContent({ silent: true }) } catch { /* publish anyway */ }
+    // Persist the latest edits across ALL pages first so every published page
+    // matches the canvas.
+    try { await flushAllDirty() } catch { /* publish anyway */ }
     const { data: { session } } = await supabase.auth.getSession()
     try {
       const res = await fetch(`/api/sites/${siteId}/publish`, {
@@ -2420,6 +2755,128 @@ export default function Editor() {
     }
   }
 
+  // ── Page management ────────────────────────────────────────────
+  const authHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` }
+  }
+
+  // Create a new page; the server derives a unique URL slug from the name (or an
+  // explicit slug). Switches to the new page on success.
+  async function addPage(name, slugInput) {
+    const headers = await authHeaders()
+    const res = await fetch(`/api/sites/${siteId}/pages`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name, page_slug: slugInput || '' }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body.error || `Could not add page (${res.status})`)
+    }
+    const { page } = await res.json()
+    pageStatesRef.current[page.id] = {
+      blocks: Array.isArray(page.blocks) ? page.blocks : [],
+      past: [], future: [], dirty: false,
+    }
+    setPages((prev) => [...prev, {
+      id: page.id, name: page.name, page_slug: page.page_slug,
+      sort_order: page.sort_order, is_home: page.is_home,
+    }])
+    switchPage(page.id)
+    return page
+  }
+
+  async function renamePage(pageId, name) {
+    const headers = await authHeaders()
+    const res = await fetch(`/api/sites/${siteId}/pages/${pageId}`, {
+      method: 'PATCH', headers, body: JSON.stringify({ name }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body.error || `Could not rename page (${res.status})`)
+    }
+    const { page } = await res.json()
+    setPages((prev) => prev.map((p) => (p.id === pageId
+      ? { ...p, name: page.name, page_slug: page.page_slug } : p)))
+  }
+
+  // Promote a page to home. The server demotes the old home (and re-slugs it),
+  // so refresh metadata from the response set.
+  async function setHomePage(pageId) {
+    // Persist edits first so re-slugging the old home doesn't drop unsaved work.
+    await flushAllDirty()
+    const headers = await authHeaders()
+    const res = await fetch(`/api/sites/${siteId}/pages/${pageId}`, {
+      method: 'PATCH', headers, body: JSON.stringify({ is_home: true }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body.error || `Could not set home page (${res.status})`)
+    }
+    // Re-read metadata so the demoted home's new slug + flags are accurate.
+    const listRes = await fetch(`/api/sites/${siteId}/pages`, { headers })
+    if (listRes.ok) {
+      const data = await listRes.json()
+      const list = Array.isArray(data.pages) ? data.pages : []
+      setPages(list.map(({ id, name, page_slug, sort_order, is_home }) =>
+        ({ id, name, page_slug, sort_order, is_home })))
+    }
+  }
+
+  async function deletePage(pageId) {
+    const headers = await authHeaders()
+    const res = await fetch(`/api/sites/${siteId}/pages/${pageId}`, { method: 'DELETE', headers })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body.error || `Could not delete page (${res.status})`)
+    }
+    delete pageStatesRef.current[pageId]
+    let nextPages = []
+    setPages((prev) => { nextPages = prev.filter((p) => p.id !== pageId); return nextPages })
+    if (activePageIdRef.current === pageId) {
+      const fallback = nextPages.find((p) => p.is_home) || nextPages[0]
+      if (fallback) {
+        // The active page is gone, so hydrate the fallback directly (switchPage
+        // would try to stash the now-deleted page).
+        const st = pageStatesRef.current[fallback.id]
+        setActivePageId(fallback.id)
+        setSelectedId(null)
+        skipDirty.current = true
+        setBlocks(st?.blocks || [])
+        setPast(st?.past || [])
+        setFuture(st?.future || [])
+        setDirty(!!st?.dirty)
+      }
+    }
+  }
+
+  // Move a page one slot left/right and persist the new sort_order for the two
+  // swapped pages.
+  async function movePage(pageId, dir) {
+    const ordered = [...pages].sort((a, b) => a.sort_order - b.sort_order)
+    const idx = ordered.findIndex((p) => p.id === pageId)
+    const swapIdx = idx + dir
+    if (idx === -1 || swapIdx < 0 || swapIdx >= ordered.length) return
+    const a = ordered[idx], b = ordered[swapIdx]
+    const aOrder = a.sort_order, bOrder = b.sort_order
+    setPages((prev) => prev.map((p) => {
+      if (p.id === a.id) return { ...p, sort_order: bOrder }
+      if (p.id === b.id) return { ...p, sort_order: aOrder }
+      return p
+    }))
+    try {
+      const headers = await authHeaders()
+      await Promise.all([
+        fetch(`/api/sites/${siteId}/pages/${a.id}`, { method: 'PATCH', headers, body: JSON.stringify({ sort_order: bOrder }) }),
+        fetch(`/api/sites/${siteId}/pages/${b.id}`, { method: 'PATCH', headers, body: JSON.stringify({ sort_order: aOrder }) }),
+      ])
+    } catch (err) {
+      console.error('Reorder pages error:', err)
+    }
+  }
+
+  const orderedPages = [...pages].sort((a, b) => a.sort_order - b.sort_order)
   const selectedBlock = blocks.find(b => b.id === selectedId)
 
   return (
@@ -2551,7 +3008,7 @@ export default function Editor() {
                     : dirty ? 'Unsaved changes' : 'All changes saved'}
                 </span>
               )}
-              <button style={s.saveBtn} onClick={() => saveContent()} disabled={saving}>
+              <button style={s.saveBtn} onClick={() => saveActivePage()} disabled={saving}>
                 {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved ✓' : 'Save'}
               </button>
               <button
@@ -2576,6 +3033,20 @@ export default function Editor() {
               </button>
             </div>
           </div>
+
+          {/* Page tabs */}
+          {siteId && !loading && orderedPages.length > 0 && (
+            <PageTabBar
+              pages={orderedPages}
+              activePageId={activePageId}
+              onSwitch={switchPage}
+              onAdd={addPage}
+              onRename={renamePage}
+              onSetHome={setHomePage}
+              onDelete={deletePage}
+              onMove={movePage}
+            />
+          )}
 
           {/* Canvas */}
           {loading ? (
@@ -2622,6 +3093,7 @@ export default function Editor() {
               key={selectedBlock.id}
               block={selectedBlock}
               siteId={siteId}
+              pages={orderedPages}
               onChangeProp={(key, value) => updateBlockProp(selectedBlock.id, key, value)}
               onChangeStyle={(key, value) => updateBlockStyle(selectedBlock.id, key, value)}
               onChangeStyleMulti={(patch) => updateBlockStyleMulti(selectedBlock.id, patch)}
@@ -2661,6 +3133,168 @@ export default function Editor() {
         ) : null}
       </DragOverlay>
     </DndContext>
+  )
+}
+
+/* Derive a URL slug preview from a page name (mirrors the server's pageSlugify). */
+function derivePageSlug(v) {
+  const base = String(v || '').toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
+  return base === 'index' ? '' : base
+}
+
+/* Browser-style page tabs above the canvas. One tab per page (home marked with
+   a star); the active tab is highlighted. Each tab has a kebab menu (rename /
+   set as home / move / delete) and there is a "+" to add a page. */
+function PageTabBar({ pages, activePageId, onSwitch, onAdd, onRename, onSetHome, onDelete, onMove }) {
+  const [menuFor, setMenuFor] = useState(null)   // pageId whose menu is open
+  const [modal, setModal] = useState(null)       // { mode, pageId, name, slug, error, busy }
+
+  // Close any open kebab menu on an outside click / Escape.
+  useEffect(() => {
+    if (!menuFor) return
+    function onDocClick() { setMenuFor(null) }
+    function onKey(e) { if (e.key === 'Escape') setMenuFor(null) }
+    document.addEventListener('click', onDocClick)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('click', onDocClick); document.removeEventListener('keydown', onKey) }
+  }, [menuFor])
+
+  function openAdd() {
+    setMenuFor(null)
+    setModal({ mode: 'add', name: '', slug: '', slugTouched: false, error: null, busy: false })
+  }
+  function openRename(page) {
+    setMenuFor(null)
+    setModal({ mode: 'rename', pageId: page.id, name: page.name, error: null, busy: false })
+  }
+
+  async function submitModal() {
+    if (!modal || modal.busy) return
+    const name = (modal.name || '').trim()
+    if (!name) { setModal((m) => ({ ...m, error: 'Please enter a page name.' })); return }
+    setModal((m) => ({ ...m, busy: true, error: null }))
+    try {
+      if (modal.mode === 'add') {
+        await onAdd(name, modal.slug || derivePageSlug(name))
+      } else {
+        await onRename(modal.pageId, name)
+      }
+      setModal(null)
+    } catch (err) {
+      setModal((m) => ({ ...m, busy: false, error: err.message || 'Something went wrong.' }))
+    }
+  }
+
+  async function handleSetHome(pageId) {
+    setMenuFor(null)
+    try { await onSetHome(pageId) } catch (err) { alert(err.message || 'Could not set home page.') }
+  }
+  async function handleDelete(page) {
+    setMenuFor(null)
+    if (!window.confirm(`Delete the "${page.name}" page? This can't be undone.`)) return
+    try { await onDelete(page.id) } catch (err) { alert(err.message || 'Could not delete page.') }
+  }
+
+  return (
+    <div style={s.pageBar}>
+      {pages.map((page, idx) => {
+        const active = page.id === activePageId
+        const menuOpen = menuFor === page.id
+        return (
+          <div key={page.id} style={{ position: 'relative', flexShrink: 0 }}>
+            <div
+              style={s.pageTab(active)}
+              onClick={() => onSwitch(page.id)}
+              title={page.is_home ? `${page.name} (home)` : `${page.name} · /${page.page_slug}`}
+            >
+              {page.is_home && <span style={s.pageHomeDot} title="Home page">★</span>}
+              <span style={s.pageTabName}>{page.name}</span>
+              <button
+                type="button"
+                style={s.pageTabMenuBtn(active)}
+                title="Page options"
+                onClick={(e) => { e.stopPropagation(); setMenuFor(menuOpen ? null : page.id) }}
+              >⋯</button>
+            </div>
+
+            {menuOpen && (
+              <div style={{ ...s.pageMenu, top: '32px', left: 0 }} onClick={(e) => e.stopPropagation()}>
+                <button type="button" style={s.pageMenuItem} onClick={() => openRename(page)}>Rename</button>
+                {!page.is_home && (
+                  <button type="button" style={s.pageMenuItem} onClick={() => handleSetHome(page.id)}>Set as home</button>
+                )}
+                <div style={s.pageMenuDivider} />
+                <button
+                  type="button"
+                  style={{ ...s.pageMenuItem, opacity: idx === 0 ? 0.4 : 1 }}
+                  disabled={idx === 0}
+                  onClick={() => { setMenuFor(null); onMove(page.id, -1) }}
+                >Move left</button>
+                <button
+                  type="button"
+                  style={{ ...s.pageMenuItem, opacity: idx === pages.length - 1 ? 0.4 : 1 }}
+                  disabled={idx === pages.length - 1}
+                  onClick={() => { setMenuFor(null); onMove(page.id, 1) }}
+                >Move right</button>
+                {!page.is_home && (
+                  <>
+                    <div style={s.pageMenuDivider} />
+                    <button
+                      type="button"
+                      style={{ ...s.pageMenuItem, ...s.pageMenuItemDanger }}
+                      onClick={() => handleDelete(page)}
+                    >Delete page</button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      <button type="button" style={s.pageAddBtn} title="Add page" onClick={openAdd}>+</button>
+
+      {modal && (
+        <div style={s.pageModalOverlay} onClick={() => !modal.busy && setModal(null)}>
+          <div style={s.pageModalCard} onClick={(e) => e.stopPropagation()}>
+            <h3 style={s.pageModalTitle}>{modal.mode === 'add' ? 'Add page' : 'Rename page'}</h3>
+            <div style={s.field}>
+              <label style={s.fieldLabel}>Page name</label>
+              <input
+                autoFocus
+                type="text"
+                value={modal.name}
+                placeholder="About"
+                style={s.input}
+                onChange={(e) => setModal((m) => ({ ...m, name: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === 'Enter') submitModal() }}
+              />
+            </div>
+            {modal.mode === 'add' && (
+              <div style={s.field}>
+                <label style={s.fieldLabel}>URL slug</label>
+                <input
+                  type="text"
+                  value={modal.slugTouched ? modal.slug : derivePageSlug(modal.name)}
+                  placeholder="about"
+                  style={s.input}
+                  onChange={(e) => setModal((m) => ({ ...m, slug: derivePageSlug(e.target.value), slugTouched: true }))}
+                />
+                <div style={s.hint}>Reached at /s/&lt;site&gt;/{(modal.slugTouched ? modal.slug : derivePageSlug(modal.name)) || 'slug'}</div>
+              </div>
+            )}
+            {modal.error && <div style={s.pageModalError}>{modal.error}</div>}
+            <div style={s.pageModalActions}>
+              <button type="button" style={s.pageModalBtn(false)} disabled={modal.busy} onClick={() => setModal(null)}>Cancel</button>
+              <button type="button" style={s.pageModalBtn(true)} disabled={modal.busy} onClick={submitModal}>
+                {modal.busy ? 'Saving…' : (modal.mode === 'add' ? 'Add page' : 'Save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 

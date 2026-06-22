@@ -65,6 +65,37 @@ function styleAttr(style) {
   return `style="${escapeHtml(css(style))}"`;
 }
 
+// ── Navigation links (Navbar / Footer) ──────────────────────────────────────────
+// A link may be a plain string (legacy: display text only, not clickable) or an
+// object { label, type:'page'|'url', pageId, url }. Internal 'page' links are
+// resolved against the site's page list to the correct /s/:slug[/:page_slug]
+// sub-path at render time; 'url' links use their literal href.
+function navLinkLabel(link) {
+  return typeof link === 'string' ? link : (link && link.label) || '';
+}
+function navLinkHref(link, ctx) {
+  if (!link || typeof link === 'string') return null; // legacy text-only link
+  if (link.type === 'url') return link.url || null;
+  if (link.type === 'page') {
+    const target = ctx && ctx.pagesById ? ctx.pagesById[link.pageId] : null;
+    if (!target || !ctx.siteSlug) return null;
+    return target.is_home
+      ? `/s/${ctx.siteSlug}`
+      : `/s/${ctx.siteSlug}/${target.page_slug}`;
+  }
+  return null;
+}
+// Render one nav link as an <a> (when it resolves to an href) or a plain <span>
+// (legacy string links, or links with no destination), sharing the given inline
+// style so anchors and spans look identical.
+function navLinkHtml(link, ctx, style) {
+  const label = escapeHtml(navLinkLabel(link));
+  const href = navLinkHref(link, ctx);
+  return href
+    ? `<a href="${escapeHtml(href)}" style="${style}text-decoration:none;">${label}</a>`
+    : `<span style="${style}">${label}</span>`;
+}
+
 // ── Shared helpers mirrored from client/src/components/BlockRenderer.jsx ─────────
 const ASPECT_PAD = { '16:9': '56.25%', '4:3': '75%', '1:1': '100%' };
 
@@ -179,12 +210,12 @@ function styleToCss(style) {
 }
 
 const BLOCK_HTML = {
-  navbar: (p) => `
+  navbar: (p, ctx) => `
     <nav style="display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid #ececec;background:#ffffff;">
       <div style="font-size:18px;font-weight:700;color:#111;letter-spacing:-0.01em;">${escapeHtml(p.logo)}</div>
       <div style="display:flex;align-items:center;gap:28px;">
         <div style="display:flex;gap:26px;">
-          ${(p.links || []).map((l) => `<span style="font-size:14px;color:#555;font-weight:500;">${escapeHtml(l)}</span>`).join('')}
+          ${(p.links || []).map((l) => navLinkHtml(l, ctx, 'font-size:14px;color:#555;font-weight:500;')).join('')}
         </div>
         <span style="background:#111;color:#fff;padding:8px 16px;border-radius:7px;font-size:13px;font-weight:600;">${escapeHtml(p.cta)}</span>
       </div>
@@ -283,11 +314,11 @@ const BLOCK_HTML = {
       </div>
     </div>`,
 
-  footer: (p) => `
+  footer: (p, ctx) => `
     <footer style="display:flex;align-items:center;justify-content:space-between;padding:24px 32px;background:#111;color:#d4d4d8;">
       <span style="font-size:13px;">${escapeHtml(p.text)}</span>
       <div style="display:flex;gap:22px;">
-        ${(p.links || []).map((l) => `<span style="font-size:13px;color:#a1a1aa;">${escapeHtml(l)}</span>`).join('')}
+        ${(p.links || []).map((l) => navLinkHtml(l, ctx, 'font-size:13px;color:#a1a1aa;')).join('')}
       </div>
     </footer>`,
 
@@ -551,12 +582,15 @@ const BLOCK_HTML = {
     return `
     <div style="padding:32px;">
       <form data-tn-form style="max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:16px;">
-        ${fields.map((f) => {
+        ${fields.map((f, i) => {
           const req = f.required === true || f.required === 'true';
+          // The field label doubles as the submitted value's key (data-tn-form's
+          // runtime collects inputs by name); fall back to the index for unlabeled fields.
+          const nm = escapeHtml(f.label || `field_${i}`);
           const lbl = `<label style="${label}">${escapeHtml(f.label)}${req ? '<span style="color:#ef4444;"> *</span>' : ''}</label>`;
           const ctrl = f.type === 'textarea'
-            ? `<textarea ${req ? 'required ' : ''}style="${input}min-height:90px;resize:vertical;"></textarea>`
-            : `<input type="${escapeHtml(f.type || 'text')}" ${req ? 'required ' : ''}style="${input}" />`;
+            ? `<textarea name="${nm}" ${req ? 'required ' : ''}style="${input}min-height:90px;resize:vertical;"></textarea>`
+            : `<input type="${escapeHtml(f.type || 'text')}" name="${nm}" ${req ? 'required ' : ''}style="${input}" />`;
           return `<div>${lbl}${ctrl}</div>`;
         }).join('')}
         <button type="submit" data-submit-text="${escapeHtml(submitText)}" style="margin-top:4px;background:#378ADD;color:#fff;border:none;border-radius:10px;padding:13px 0;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background 0.2s;">${escapeHtml(submitText)}</button>
@@ -628,11 +662,11 @@ const BLOCK_HTML = {
 // Render a single block, applying the universal style wrapper (props.style)
 // exactly like the editor's BlockRenderer does: the same styleToCss output plus
 // the tn-block hover classes and (data-driven) entrance animation.
-function renderBlock(block) {
+function renderBlock(block, navContext) {
   const render = BLOCK_HTML[block.type];
   if (!render) return '';
   const props = block.props || {};
-  const inner = render(props);
+  const inner = render(props, navContext);
 
   const st = props.style;
   const cssObj = styleToCss(st);
@@ -746,16 +780,40 @@ const PUBLISHED_RUNTIME_JS = `
     setInterval(tick, 1000);
   });
 
-  // Form: intercept submit and show transient "Sent!" feedback.
+  // Form: POST the submitted field values to this site's leads endpoint, then
+  // show success/error feedback. Same-origin relative URL, like the chat widget.
+  var TN_SITE_ID = (function () {
+    var m = document.querySelector('meta[name="tn-site-id"]');
+    return m ? m.getAttribute('content') : '';
+  })();
   document.querySelectorAll('[data-tn-form]').forEach(function (form) {
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var btn = form.querySelector('button[type=submit]');
-      if (!btn) return;
-      var orig = btn.getAttribute('data-submit-text') || btn.textContent;
-      btn.textContent = '\\u2713 Sent!';
-      btn.style.background = '#22c55e';
-      setTimeout(function () { btn.textContent = orig; btn.style.background = '#378ADD'; form.reset(); }, 2500);
+      var orig = btn ? (btn.getAttribute('data-submit-text') || btn.textContent) : '';
+      function reset() { if (btn) { btn.disabled = false; btn.textContent = orig; btn.style.background = '#378ADD'; } }
+      function flash(text, color, after) {
+        if (!btn) { if (after) after(); return; }
+        btn.disabled = false; btn.textContent = text; btn.style.background = color;
+        setTimeout(function () { reset(); if (after) after(); }, 2500);
+      }
+      // Collect the field values keyed by each control's name (the field label).
+      var data = {};
+      Array.prototype.slice.call(form.querySelectorAll('input[name], textarea[name], select[name]'))
+        .forEach(function (el) { data[el.getAttribute('name')] = el.value; });
+
+      if (!TN_SITE_ID) { flash('\\u2713 Sent!', '#22c55e', function () { form.reset(); }); return; }
+      if (btn) { btn.disabled = true; btn.textContent = 'Sending\\u2026'; }
+      fetch('/api/sites/' + encodeURIComponent(TN_SITE_ID) + '/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: data })
+      }).then(function (r) {
+        if (!r.ok) throw new Error('failed');
+        flash('\\u2713 Sent!', '#22c55e', function () { form.reset(); });
+      }).catch(function () {
+        flash('Couldn\\u2019t send \\u2014 try again', '#ef4444');
+      });
     });
   });
 
@@ -800,11 +858,11 @@ function widgetScriptTag(apiKey) {
 // The widget is injected once if the global toggle is on OR an "aiChat" block is
 // placed on the canvas (deduped so both together still inject a single bubble).
 function renderBlocksToHTML(blocks, siteName, opts = {}) {
-  const { chatbotEnabled = false, apiKey = '' } = opts;
+  const { chatbotEnabled = false, apiKey = '', siteId = '', navContext = null } = opts;
   const safeBlocks = Array.isArray(blocks) ? blocks : [];
   const body = safeBlocks
     .filter((b) => b && !b.hidden && BLOCK_HTML[b.type])
-    .map(renderBlock)
+    .map((b) => renderBlock(b, navContext))
     .join('\n');
 
   // An aiChat block is a floating bubble, not inline content — its presence just
@@ -819,6 +877,7 @@ function renderBlocksToHTML(blocks, siteName, opts = {}) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  ${siteId ? `<meta name="tn-site-id" content="${escapeHtml(siteId)}" />` : ''}
   <title>${escapeHtml(siteName || 'My Site')}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1056,6 +1115,16 @@ const chatLimiter = rateLimit({
   message: { error: 'Too many requests, please try again later.' },
 });
 
+// Public form-submission endpoint: a visitor sends at most a handful of leads,
+// so cap it tighter than chat to blunt spam from a single source.
+const leadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many submissions, please try again later.' },
+});
+
 // Serve static files from public/ (e.g. the embeddable /widget.js) but NOT
 // index.html at "/" — the landing page is now a route in the React SPA.
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
@@ -1086,7 +1155,7 @@ app.get('/api/templates/:id/preview', (req, res) => {
 // each block's props generically and collects human-readable strings, skipping
 // styling/asset values (colors, URLs, dimensions). Capped so a large page can't
 // blow up the prompt.
-const DIGEST_SKIP_KEYS = /color|bg|src|href|url|image|font|align|width|height|radius|level|fit|variant|placeholder|date|^type$/i;
+const DIGEST_SKIP_KEYS = /color|bg|src|href|url|image|font|align|width|height|radius|level|fit|variant|placeholder|date|pageId|^type$/i;
 const DIGEST_CHAR_CAP = 2000;
 
 function collectPropText(value, out) {
@@ -1350,12 +1419,113 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
   }
 });
 
+// ── Public lead capture ─────────────────────────────────────────────────────
+// Form blocks on a published /s/:slug page POST their field values here. No auth
+// (visitors aren't logged in); abuse is contained by leadLimiter plus the same
+// origin protection as /api/chat — the request must come from this site's own
+// published page (Referer path = /s/:slug) or be same-origin to our server.
+
+app.options('/api/sites/:id/leads', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.sendStatus(204);
+});
+
+app.post('/api/sites/:id/leads', leadLimiter, async (req, res) => {
+  try {
+    const { data } = req.body || {};
+
+    if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).length === 0) {
+      return res.status(400).json({ error: 'Form data is required.' });
+    }
+
+    let site;
+    try {
+      const result = await pool.query(
+        'SELECT id, slug, is_published FROM sites WHERE id = $1',
+        [req.params.id]
+      );
+      site = result.rows[0];
+    } catch (err) {
+      console.error('DB error looking up site for lead:', err);
+      return res.status(500).json({ error: 'Internal server error.' });
+    }
+
+    if (!site || !site.is_published) {
+      return res.status(404).json({ error: 'Site not found.' });
+    }
+
+    // Origin protection — mirror /api/chat: accept the request only when it comes
+    // from this site's published page (Referer path = /s/:slug) or is same-origin
+    // to the server actually being addressed (Host / X-Forwarded-Host).
+    const origin = req.headers.origin || '';
+    const referer = req.headers.referer || '';
+    const normalise = (u) => String(u || '').replace(/\/+$/, '').toLowerCase();
+
+    let matchesPublishedPage = false;
+    if (site.slug) {
+      try {
+        const refPath = normalise(new URL(referer).pathname);
+        matchesPublishedPage = refPath === normalise(`/s/${site.slug}`);
+      } catch {
+        matchesPublishedPage = false;
+      }
+    }
+
+    const fwdProto = (req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+    const scheme = fwdProto || req.protocol || 'http';
+    const serverOrigins = [
+      req.headers.host ? `${scheme}://${req.headers.host}` : null,
+      req.headers['x-forwarded-host'] ? `${scheme}://${req.headers['x-forwarded-host']}` : null,
+    ].filter(Boolean);
+    const matchesServerOrigin =
+      !!origin && serverOrigins.some((o) => normalise(o) === normalise(origin));
+
+    if (!matchesPublishedPage && !matchesServerOrigin) {
+      return res.status(403).json({ error: 'Origin not allowed.' });
+    }
+
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Vary', 'Origin');
+
+    // Keep stored values to plain strings and bound their size, so a crafted POST
+    // can't stuff arbitrary nested JSON or huge payloads into the merchant's inbox.
+    const clean = {};
+    for (const [key, value] of Object.entries(data)) {
+      const k = String(key).slice(0, 200);
+      clean[k] = (value == null ? '' : String(value)).slice(0, 5000);
+    }
+
+    try {
+      await pool.query(
+        'INSERT INTO leads (site_id, data) VALUES ($1, $2)',
+        [site.id, JSON.stringify(clean)]
+      );
+    } catch (err) {
+      console.error('DB error inserting lead:', err);
+      return res.status(500).json({ error: 'Internal server error.' });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/sites/:id/leads error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 // ── Dashboard API ─────────────────────────────────────────────────────────────
 
 app.get('/api/sites', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, domain_url, api_key, subscription_tier, is_active, created_at FROM sites WHERE owner_id = $1 ORDER BY created_at DESC',
+      `SELECT s.id, s.name, s.domain_url, s.api_key, s.subscription_tier, s.is_active, s.created_at,
+              COUNT(l.id) FILTER (WHERE l.is_read = false)::int AS unread_leads
+         FROM sites s
+         LEFT JOIN leads l ON l.site_id = s.id
+        WHERE s.owner_id = $1
+        GROUP BY s.id
+        ORDER BY s.created_at DESC`,
       [req.user.id]
     );
     res.json(result.rows);
@@ -1377,6 +1547,13 @@ app.post('/api/sites', requireAuth, async (req, res) => {
        VALUES ($1, $2, $3, '', 'free', true, $4)
        RETURNING id, name, domain_url, api_key, subscription_tier, is_active, created_at`,
       [name, req.user.id, apiKey, JSON.stringify(content)]
+    );
+    // Seed the site's home page from the same starting blocks so the multi-page
+    // model is in place from creation (the editor reads /pages, not content).
+    await pool.query(
+      `INSERT INTO pages (site_id, name, page_slug, blocks, sort_order, is_home)
+       VALUES ($1, 'Home', '', $2, 0, true)`,
+      [result.rows[0].id, JSON.stringify(content)]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -1468,6 +1645,57 @@ app.delete('/api/sites/:id', requireAuth, async (req, res) => {
   }
 });
 
+// Leads collected by a site's Form blocks (owner-scoped), newest first, plus the
+// unread count so the dashboard/Messages view can badge new submissions.
+app.get('/api/sites/:id/leads', requireAuth, async (req, res) => {
+  try {
+    const owns = await pool.query(
+      'SELECT id FROM sites WHERE id = $1 AND owner_id = $2',
+      [req.params.id, req.user.id]
+    );
+    if (!owns.rows[0]) return res.status(404).json({ error: 'Not found.' });
+
+    const result = await pool.query(
+      'SELECT id, data, is_read, created_at FROM leads WHERE site_id = $1 ORDER BY created_at DESC',
+      [req.params.id]
+    );
+    const unreadCount = result.rows.reduce((n, l) => n + (l.is_read ? 0 : 1), 0);
+    res.json({ leads: result.rows, unreadCount });
+  } catch (err) {
+    console.error('GET /api/sites/:id/leads error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// Mark a site's leads read (owner-scoped). The Messages view calls this once the
+// merchant has seen them; with no `ids`, every unread lead for the site is marked.
+app.patch('/api/sites/:id/leads/read', requireAuth, async (req, res) => {
+  try {
+    const owns = await pool.query(
+      'SELECT id FROM sites WHERE id = $1 AND owner_id = $2',
+      [req.params.id, req.user.id]
+    );
+    if (!owns.rows[0]) return res.status(404).json({ error: 'Not found.' });
+
+    const { ids } = req.body || {};
+    if (Array.isArray(ids) && ids.length > 0) {
+      await pool.query(
+        'UPDATE leads SET is_read = true WHERE site_id = $1 AND id = ANY($2::uuid[])',
+        [req.params.id, ids]
+      );
+    } else {
+      await pool.query(
+        'UPDATE leads SET is_read = true WHERE site_id = $1 AND is_read = false',
+        [req.params.id]
+      );
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('PATCH /api/sites/:id/leads/read error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 // ── Billing API ─────────────────────────────────────────────────────────────
 
 // Create a Stripe Checkout Session for the $29/mo Pro subscription and return
@@ -1538,24 +1766,306 @@ app.post('/api/billing-portal', requireAuth, async (req, res) => {
   }
 });
 
+// ── Pages (multi-page sites) ─────────────────────────────────────────────────
+// A site has one or more pages, each with its own block array. Exactly one page
+// is the home page. The `pages` table is the source of truth; sites.content is
+// kept mirrored to the home page so legacy readers keep working.
+
+// Normalise a stored blocks value (jsonb already-parsed, or a JSON text string)
+// into a plain array.
+function parseBlocks(value) {
+  let blocks = value ?? [];
+  if (typeof blocks === 'string') {
+    try { blocks = JSON.parse(blocks); } catch { blocks = []; }
+  }
+  return Array.isArray(blocks) ? blocks : [];
+}
+
+// "About!" → "about"; 'index' and empty fall back to '' (the home slug). Used
+// when deriving a page_slug from a page name.
+function pageSlugify(value) {
+  const base = String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+  return base === 'index' ? '' : base;
+}
+
+// Lazily backfill a site's home page from sites.content the first time the site
+// is touched through a pages-aware code path. This guarantees backward
+// compatibility even for sites the one-time SQL migration hasn't covered (e.g.
+// created after it ran), so the rest of the code can assume a site always has
+// at least one (home) page.
+async function ensurePages(siteId) {
+  const existing = await pool.query('SELECT 1 FROM pages WHERE site_id = $1 LIMIT 1', [siteId]);
+  if (existing.rows[0]) return;
+  const siteRes = await pool.query('SELECT content FROM sites WHERE id = $1', [siteId]);
+  if (!siteRes.rows[0]) return;
+  const blocks = parseBlocks(siteRes.rows[0].content);
+  await pool.query(
+    `INSERT INTO pages (site_id, name, page_slug, blocks, sort_order, is_home)
+     VALUES ($1, 'Home', '', $2, 0, true)
+     ON CONFLICT (site_id, page_slug) DO NOTHING`,
+    [siteId, JSON.stringify(blocks)]
+  );
+}
+
+// Confirm the caller owns the site; returns the row (id, slug) or null.
+async function getOwnedSite(siteId, userId) {
+  const r = await pool.query(
+    'SELECT id, name, slug FROM sites WHERE id = $1 AND owner_id = $2',
+    [siteId, userId]
+  );
+  return r.rows[0] || null;
+}
+
+// Mirror the home page's blocks onto the legacy sites.content column so the chat
+// digest and any other content readers stay accurate.
+async function syncSiteContentFromHome(siteId) {
+  const home = await pool.query(
+    'SELECT blocks FROM pages WHERE site_id = $1 AND is_home = true ORDER BY sort_order LIMIT 1',
+    [siteId]
+  );
+  if (!home.rows[0]) return;
+  await pool.query(
+    'UPDATE sites SET content = $1, updated_at = NOW() WHERE id = $2',
+    [JSON.stringify(parseBlocks(home.rows[0].blocks)), siteId]
+  );
+}
+
+// List a site's pages (metadata + blocks), ordered for the editor tab bar.
+app.get('/api/sites/:id/pages', requireAuth, async (req, res) => {
+  try {
+    const site = await getOwnedSite(req.params.id, req.user.id);
+    if (!site) return res.status(404).json({ error: 'Not found.' });
+
+    await ensurePages(site.id);
+    const result = await pool.query(
+      `SELECT id, name, page_slug, blocks, sort_order, is_home
+         FROM pages WHERE site_id = $1
+        ORDER BY sort_order ASC, created_at ASC`,
+      [site.id]
+    );
+    const pages = result.rows.map((p) => ({ ...p, blocks: parseBlocks(p.blocks) }));
+    res.json({ pages });
+  } catch (err) {
+    console.error('GET /api/sites/:id/pages error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// Create a new page. name is required; page_slug is derived from the name when
+// omitted. The slug must be unique within the site and may not take the home
+// slug ('').
+app.post('/api/sites/:id/pages', requireAuth, async (req, res) => {
+  try {
+    const site = await getOwnedSite(req.params.id, req.user.id);
+    if (!site) return res.status(404).json({ error: 'Not found.' });
+    await ensurePages(site.id);
+
+    const { name, page_slug } = req.body || {};
+    if (typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ error: 'Page name is required.' });
+    }
+    const slug = pageSlugify(page_slug != null && page_slug !== '' ? page_slug : name);
+    if (!slug) {
+      return res.status(400).json({ error: 'A new page needs a non-empty URL slug.' });
+    }
+
+    const dupe = await pool.query(
+      'SELECT 1 FROM pages WHERE site_id = $1 AND page_slug = $2',
+      [site.id, slug]
+    );
+    if (dupe.rows[0]) {
+      return res.status(409).json({ error: 'A page with that URL slug already exists.' });
+    }
+
+    const ord = await pool.query(
+      'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM pages WHERE site_id = $1',
+      [site.id]
+    );
+    const result = await pool.query(
+      `INSERT INTO pages (site_id, name, page_slug, blocks, sort_order, is_home)
+       VALUES ($1, $2, $3, '[]'::jsonb, $4, false)
+       RETURNING id, name, page_slug, blocks, sort_order, is_home`,
+      [site.id, name.trim(), slug, ord.rows[0].next]
+    );
+    const page = { ...result.rows[0], blocks: parseBlocks(result.rows[0].blocks) };
+    res.json({ page });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'A page with that URL slug already exists.' });
+    }
+    console.error('POST /api/sites/:id/pages error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// Update a page: any of name / page_slug / blocks / sort_order / is_home. Setting
+// is_home=true atomically unsets every other page's home flag (exactly one home
+// per site). Blocks edits to the home page are mirrored to sites.content.
+app.patch('/api/sites/:id/pages/:pageId', requireAuth, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const site = await getOwnedSite(req.params.id, req.user.id);
+    if (!site) return res.status(404).json({ error: 'Not found.' });
+
+    const existing = await pool.query(
+      'SELECT id, page_slug, is_home FROM pages WHERE id = $1 AND site_id = $2',
+      [req.params.pageId, site.id]
+    );
+    const page = existing.rows[0];
+    if (!page) return res.status(404).json({ error: 'Page not found.' });
+
+    const { name, page_slug, blocks, sort_order, is_home } = req.body || {};
+
+    const fields = [];
+    const values = [];
+    let i = 1;
+
+    if (name !== undefined) {
+      if (typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({ error: 'Page name must be a non-empty string.' });
+      }
+      fields.push(`name = $${i++}`); values.push(name.trim());
+    }
+
+    // A page being promoted to home below always takes the '' slug, so ignore an
+    // explicit page_slug in that case (it would double-assign the column).
+    if (page_slug !== undefined && is_home !== true) {
+      // The home page keeps the '' slug; only non-home pages get a real slug.
+      const slug = page.is_home ? '' : pageSlugify(page_slug);
+      if (!page.is_home && !slug) {
+        return res.status(400).json({ error: 'A non-home page needs a non-empty URL slug.' });
+      }
+      if (slug !== page.page_slug) {
+        const dupe = await pool.query(
+          'SELECT 1 FROM pages WHERE site_id = $1 AND page_slug = $2 AND id <> $3',
+          [site.id, slug, page.id]
+        );
+        if (dupe.rows[0]) {
+          return res.status(409).json({ error: 'A page with that URL slug already exists.' });
+        }
+      }
+      fields.push(`page_slug = $${i++}`); values.push(slug);
+    }
+
+    if (blocks !== undefined) {
+      if (!Array.isArray(blocks)) {
+        return res.status(400).json({ error: 'blocks must be an array.' });
+      }
+      fields.push(`blocks = $${i++}`); values.push(JSON.stringify(blocks));
+    }
+
+    if (sort_order !== undefined) {
+      const n = Number(sort_order);
+      if (!Number.isFinite(n)) {
+        return res.status(400).json({ error: 'sort_order must be a number.' });
+      }
+      fields.push(`sort_order = $${i++}`); values.push(Math.trunc(n));
+    }
+
+    const makingHome = is_home === true && !page.is_home;
+
+    if (fields.length === 0 && !makingHome) {
+      return res.status(400).json({ error: 'No updatable fields provided.' });
+    }
+
+    await client.query('BEGIN');
+    try {
+      if (makingHome) {
+        // Demote the current home, then promote this page. The home page always
+        // owns the '' slug, so swap the old home onto a derived slug to avoid a
+        // UNIQUE collision.
+        await client.query(
+          `UPDATE pages SET is_home = false,
+                   page_slug = CASE WHEN page_slug = '' THEN $2 ELSE page_slug END,
+                   updated_at = NOW()
+             WHERE site_id = $1 AND is_home = true`,
+          [site.id, pageSlugify(`page-${Date.now()}`) || 'home']
+        );
+        fields.push(`is_home = $${i++}`); values.push(true);
+        fields.push(`page_slug = $${i++}`); values.push('');
+      }
+
+      fields.push('updated_at = NOW()');
+      values.push(page.id, site.id);
+      const result = await client.query(
+        `UPDATE pages SET ${fields.join(', ')}
+           WHERE id = $${i++} AND site_id = $${i}
+           RETURNING id, name, page_slug, blocks, sort_order, is_home`,
+        values
+      );
+      await client.query('COMMIT');
+
+      const updated = { ...result.rows[0], blocks: parseBlocks(result.rows[0].blocks) };
+      // Keep sites.content in sync whenever the home page's blocks may have moved.
+      if (blocks !== undefined || makingHome) {
+        await syncSiteContentFromHome(site.id);
+      }
+      res.json({ page: updated });
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    }
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'A page with that URL slug already exists.' });
+    }
+    console.error('PATCH /api/sites/:id/pages/:pageId error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  } finally {
+    client.release();
+  }
+});
+
+// Delete a page. The home page and the last remaining page cannot be deleted.
+app.delete('/api/sites/:id/pages/:pageId', requireAuth, async (req, res) => {
+  try {
+    const site = await getOwnedSite(req.params.id, req.user.id);
+    if (!site) return res.status(404).json({ error: 'Not found.' });
+
+    const existing = await pool.query(
+      'SELECT id, is_home FROM pages WHERE id = $1 AND site_id = $2',
+      [req.params.pageId, site.id]
+    );
+    const page = existing.rows[0];
+    if (!page) return res.status(404).json({ error: 'Page not found.' });
+    if (page.is_home) {
+      return res.status(400).json({ error: 'The home page cannot be deleted.' });
+    }
+
+    const count = await pool.query('SELECT COUNT(*)::int AS n FROM pages WHERE site_id = $1', [site.id]);
+    if (count.rows[0].n <= 1) {
+      return res.status(400).json({ error: 'A site must have at least one page.' });
+    }
+
+    await pool.query('DELETE FROM pages WHERE id = $1 AND site_id = $2', [page.id, site.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/sites/:id/pages/:pageId error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 // ── Editor content API ───────────────────────────────────────────────────────
 
+// Legacy single-page content endpoints, now backed by the home page. Kept so
+// any older client (or external integration) keeps working; the multi-page
+// editor uses the /pages endpoints instead. GET returns the home page's blocks;
+// PUT saves them to the home page (and mirrors to sites.content).
 app.get('/api/sites/:id/content', requireAuth, async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT id, name, content FROM sites WHERE id = $1 AND owner_id = $2',
-      [req.params.id, req.user.id]
+    const site = await getOwnedSite(req.params.id, req.user.id);
+    if (!site) return res.status(404).json({ error: 'Not found.' });
+    await ensurePages(site.id);
+    const home = await pool.query(
+      'SELECT blocks FROM pages WHERE site_id = $1 AND is_home = true ORDER BY sort_order LIMIT 1',
+      [site.id]
     );
-    if (!result.rows[0]) return res.status(404).json({ error: 'Not found.' });
-    console.log('GET content result:', result.rows[0]);
-    const { id, name, content } = result.rows[0];
-    // content may come back as a jsonb (already parsed) or as a text string
-    let blocks = content ?? [];
-    if (typeof blocks === 'string') {
-      try { blocks = JSON.parse(blocks); } catch { blocks = []; }
-    }
-    if (!Array.isArray(blocks)) blocks = [];
-    res.json({ id, name, blocks });
+    res.json({ id: site.id, name: site.name, blocks: parseBlocks(home.rows[0]?.blocks) });
   } catch (err) {
     console.error('GET /api/sites/:id/content error:', err);
     res.status(500).json({ error: 'Internal server error.' });
@@ -1565,13 +2075,16 @@ app.get('/api/sites/:id/content', requireAuth, async (req, res) => {
 app.put('/api/sites/:id/content', requireAuth, async (req, res) => {
   try {
     const { blocks } = req.body;
-    console.log('PUT content, body:', req.body, 'user:', req.user?.id);
     if (!Array.isArray(blocks)) return res.status(400).json({ error: 'blocks must be an array.' });
-    const result = await pool.query(
-      'UPDATE sites SET content = $1 WHERE id = $2 AND owner_id = $3 RETURNING id',
-      [JSON.stringify(blocks), req.params.id, req.user.id]
+    const site = await getOwnedSite(req.params.id, req.user.id);
+    if (!site) return res.status(404).json({ error: 'Not found.' });
+    await ensurePages(site.id);
+    await pool.query(
+      `UPDATE pages SET blocks = $1, updated_at = NOW()
+         WHERE site_id = $2 AND is_home = true`,
+      [JSON.stringify(blocks), site.id]
     );
-    if (!result.rows[0]) return res.status(404).json({ error: 'Not found.' });
+    await syncSiteContentFromHome(site.id);
     res.json({ ok: true });
   } catch (err) {
     console.error('PUT /api/sites/:id/content error:', err);
@@ -1600,6 +2113,11 @@ app.post('/api/sites/:id/publish', requireAuth, async (req, res) => {
     );
     const site = result.rows[0];
     if (!site) return res.status(404).json({ error: 'Not found.' });
+
+    // Publishing covers ALL of a site's pages: they are rendered on demand from
+    // the pages table, so flipping is_published makes every page live at once.
+    // Make sure at least the home page exists before going public.
+    await ensurePages(site.id);
 
     // 1. Reuse an existing slug; otherwise generate "<name>-<suffix>", retrying
     //    on the rare UNIQUE collision.
@@ -1633,16 +2151,9 @@ app.post('/api/sites/:id/publish', requireAuth, async (req, res) => {
   }
 });
 
-// Public, no-auth page for a published site.
-app.get('/s/:slug', async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT name, content, chatbot_enabled, api_key FROM sites WHERE slug = $1 AND is_published = true',
-      [req.params.slug]
-    );
-    const site = result.rows[0];
-    if (!site) {
-      return res.status(404).type('html').send(`<!DOCTYPE html>
+// Standalone 404 for an unknown / unpublished site.
+function siteNotFoundHtml() {
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -1660,37 +2171,118 @@ app.get('/s/:slug', async (req, res) => {
   <h1>404</h1>
   <p>This site doesn't exist or hasn't been published yet.</p>
 </body>
-</html>`);
-    }
+</html>`;
+}
 
-    let blocks = site.content ?? [];
-    if (typeof blocks === 'string') {
-      try { blocks = JSON.parse(blocks); } catch { blocks = []; }
-    }
-    if (!Array.isArray(blocks)) blocks = [];
+// Styled 404 for a page that doesn't exist WITHIN a real published site, with a
+// link back to that site's home page.
+function pageNotFoundHtml(siteName, homeUrl) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Page not found · ${escapeHtml(siteName || 'Site')}</title>
+  <style>
+    body { font-family: Inter, -apple-system, sans-serif; background: #fafafa; color: #333;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100vh; margin: 0; text-align: center; padding: 0 24px; }
+    h1 { font-size: 64px; margin: 0; color: #111; }
+    p { color: #666; margin: 10px 0 22px; }
+    a { display: inline-block; background: #111; color: #fff; text-decoration: none;
+      padding: 11px 22px; border-radius: 9px; font-size: 14px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>404</h1>
+  <p>That page doesn't exist on ${escapeHtml(siteName || 'this site')}.</p>
+  <a href="${escapeHtml(homeUrl)}">Back to home</a>
+</body>
+</html>`;
+}
 
-    // Published pages may reference images hosted on Supabase Storage and other
-    // origins, run the inline interactivity runtime (accordion/tabs/carousel/
-    // countdown/form/entrance), and embed video/map iframes — so relax the
-    // editor's strict CSP for this public route. The inline <script> is fully
-    // static (no user data), so 'unsafe-inline' here doesn't widen XSS surface.
-    res.setHeader(
-      'Content-Security-Policy',
-      "default-src 'self'; style-src 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src * data:; font-src 'self' data: https://fonts.gstatic.com; frame-src https:"
-    );
-    // The embedded chat widget POSTs to our own same-origin /api/chat, which
-    // authorises the request by checking the Referer points at this /s/:slug page.
-    // Helmet's global default is Referrer-Policy: no-referrer, which strips the
-    // Referer entirely and breaks that check in the browser. Override it here to
-    // "same-origin": the browser still sends the full Referer (path included) to
-    // our own API, but leaks nothing to cross-origin destinations.
-    res.setHeader('Referrer-Policy', 'same-origin');
-    res.type('html').send(renderBlocksToHTML(blocks, site.name, {
-      chatbotEnabled: site.chatbot_enabled === true,
-      apiKey: site.api_key,
-    }));
+// Render and respond with one published page of a site. `pages` is the full
+// ordered page list (used to resolve internal nav links to sub-paths).
+function sendPublishedPage(res, site, page, pages) {
+  const pagesById = {};
+  for (const p of pages) {
+    pagesById[p.id] = { page_slug: p.page_slug, is_home: p.is_home };
+  }
+  // Published pages may reference images hosted on Supabase Storage and other
+  // origins, run the inline interactivity runtime (accordion/tabs/carousel/
+  // countdown/form/entrance), and embed video/map iframes — so relax the
+  // editor's strict CSP for this public route. The inline <script> is fully
+  // static (no user data), so 'unsafe-inline' here doesn't widen XSS surface.
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; style-src 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src * data:; font-src 'self' data: https://fonts.gstatic.com; frame-src https:"
+  );
+  // The embedded chat widget POSTs to our own same-origin /api/chat, which
+  // authorises the request by checking the Referer points at this /s/:slug page.
+  // Helmet's global default is Referrer-Policy: no-referrer, which strips the
+  // Referer entirely and breaks that check in the browser. Override it here to
+  // "same-origin": the browser still sends the full Referer (path included) to
+  // our own API, but leaks nothing to cross-origin destinations.
+  res.setHeader('Referrer-Policy', 'same-origin');
+  res.type('html').send(renderBlocksToHTML(parseBlocks(page.blocks), site.name, {
+    chatbotEnabled: site.chatbot_enabled === true,
+    apiKey: site.api_key,
+    siteId: site.id,
+    navContext: { siteSlug: site.slug, pagesById },
+  }));
+}
+
+// Load a published site + all its pages by slug. Returns null when there is no
+// such published site.
+async function loadPublishedSite(slug) {
+  const result = await pool.query(
+    'SELECT id, name, slug, chatbot_enabled, api_key FROM sites WHERE slug = $1 AND is_published = true',
+    [slug]
+  );
+  const site = result.rows[0];
+  if (!site) return null;
+  await ensurePages(site.id);
+  const pagesRes = await pool.query(
+    `SELECT id, name, page_slug, blocks, sort_order, is_home
+       FROM pages WHERE site_id = $1
+      ORDER BY sort_order ASC, created_at ASC`,
+    [site.id]
+  );
+  return { site, pages: pagesRes.rows };
+}
+
+// Public, no-auth home page for a published site.
+app.get('/s/:slug', async (req, res) => {
+  try {
+    const loaded = await loadPublishedSite(req.params.slug);
+    if (!loaded) return res.status(404).type('html').send(siteNotFoundHtml());
+    const { site, pages } = loaded;
+    const home = pages.find((p) => p.is_home) || pages[0];
+    if (!home) return res.status(404).type('html').send(siteNotFoundHtml());
+    sendPublishedPage(res, site, home, pages);
   } catch (err) {
     console.error('GET /s/:slug error:', err);
+    res.status(500).type('html').send('<h1>500</h1><p>Something went wrong.</p>');
+  }
+});
+
+// Public, no-auth sub-page for a published site (/s/:slug/:pageSlug).
+app.get('/s/:slug/:pageSlug', async (req, res) => {
+  try {
+    const loaded = await loadPublishedSite(req.params.slug);
+    if (!loaded) return res.status(404).type('html').send(siteNotFoundHtml());
+    const { site, pages } = loaded;
+    // 'index' is an alias for the home page, mirroring the slug convention.
+    const wanted = req.params.pageSlug === 'index' ? '' : req.params.pageSlug;
+    const page = wanted === ''
+      ? (pages.find((p) => p.is_home) || pages[0])
+      : pages.find((p) => p.page_slug === wanted);
+    if (!page) {
+      return res.status(404).type('html').send(pageNotFoundHtml(site.name, `/s/${site.slug}`));
+    }
+    sendPublishedPage(res, site, page, pages);
+  } catch (err) {
+    console.error('GET /s/:slug/:pageSlug error:', err);
     res.status(500).type('html').send('<h1>500</h1><p>Something went wrong.</p>');
   }
 });

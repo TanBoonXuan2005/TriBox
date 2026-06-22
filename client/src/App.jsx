@@ -7,6 +7,7 @@ import Editor from './pages/Editor'
 import Templates from './pages/Templates'
 import Pricing from './pages/Pricing'
 import Settings from './pages/Settings'
+import Leads from './pages/Leads'
 import Account from './pages/Account'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -40,6 +41,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/leads"
+          element={
+            <ProtectedRoute>
+              <Leads />
             </ProtectedRoute>
           }
         />

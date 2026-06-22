@@ -94,6 +94,22 @@ const s = {
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
+  messagesRow: (unread) => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '7px',
+    width: '100%',
+    background: unread ? colors.successBg : 'transparent',
+    border: `0.5px solid ${unread ? colors.successBorder : 'rgba(255,255,255,0.1)'}`,
+    color: unread ? colors.success : 'rgba(255,255,255,0.55)',
+    borderRadius: '7px',
+    padding: '8px 10px',
+    fontSize: '12px',
+    fontWeight: unread ? 600 : 400,
+    cursor: 'pointer',
+    fontFamily: 'Inter, sans-serif',
+    textAlign: 'left',
+  }),
   actions: {
     display: 'flex',
     gap: '8px',
@@ -417,6 +433,15 @@ export default function Dashboard() {
                     <div style={s.statusDot(site.is_active)} title={site.is_active ? 'Active' : 'Draft'} />
                   </div>
                   <p style={s.domainUrl}>{site.domain_url || <em style={{ opacity: 0.4 }}>No domain set</em>}</p>
+                  <button
+                    style={s.messagesRow(site.unread_leads > 0)}
+                    onClick={() => navigate(`/leads?id=${site.id}`)}
+                  >
+                    <span aria-hidden="true">✉</span>
+                    {site.unread_leads > 0
+                      ? `${site.unread_leads} new message${site.unread_leads === 1 ? '' : 's'}`
+                      : 'Messages'}
+                  </button>
                   <div style={s.actions}>
                     <button
                       style={s.actionBtn}
