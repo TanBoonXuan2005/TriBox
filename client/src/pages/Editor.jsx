@@ -17,6 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { createPortal } from 'react-dom'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { Highlight, themes } from 'prism-react-renderer'
 import { supabase } from '../lib/supabase'
@@ -2015,9 +2016,56 @@ function serializeNavLink(obj) {
   return obj.label // "no link" → plain string (keeps data backward-compatible)
 }
 
-/* Per-link editor for Navbar / Footer links: a label, a destination dropdown
-   (a page of this site, an external URL, or no link), and a URL field when
-   "External URL" is chosen. */
+/* Shared destination editor for any link field (Navbar / Footer links, Button,
+   …): a dropdown to pick an internal page of this site, an external URL, or no
+   link, plus the URL input shown when "External URL" is chosen and a warning
+   when a linked page has been deleted. Operates purely on the destination part
+   { type:'none'|'page'|'url', pageId, url }; callers own any separate label. */
+function LinkDestEditor({ dest, pages, onChange, noneLabel = 'No link' }) {
+  const type = dest?.type === 'page' || dest?.type === 'url' ? dest.type : 'none'
+  const pageId = dest?.pageId || ''
+  const url = dest?.url || ''
+  const destValue = type === 'page' ? `page:${pageId}` : type
+
+  function onDestChange(value) {
+    if (value === 'none') onChange({ type: 'none', pageId, url })
+    else if (value === 'url') onChange({ type: 'url', pageId, url })
+    else if (value.startsWith('page:')) onChange({ type: 'page', pageId: value.slice(5), url })
+  }
+
+  return (
+    <>
+      <select value={destValue} onChange={(e) => onDestChange(e.target.value)} style={s.select}>
+        <option value="none">{noneLabel}</option>
+        {pages.length > 0 && (
+          <optgroup label="Pages">
+            {pages.map((p) => (
+              <option key={p.id} value={`page:${p.id}`}>
+                {p.name}{p.is_home ? ' (home)' : ''}
+              </option>
+            ))}
+          </optgroup>
+        )}
+        <option value="url">External URL…</option>
+      </select>
+      {type === 'url' && (
+        <input
+          type="text"
+          value={url}
+          placeholder="https://example.com"
+          onChange={(e) => onChange({ type: 'url', pageId, url: e.target.value })}
+          style={s.input}
+        />
+      )}
+      {type === 'page' && !pages.some((p) => p.id === pageId) && (
+        <div style={{ ...s.hint, color: '#f59e0b' }}>Linked page was removed — pick another.</div>
+      )}
+    </>
+  )
+}
+
+/* Per-link editor for Navbar / Footer links: a label plus the shared
+   destination editor. */
 function NavLinksField({ links, pages, onChange }) {
   const items = Array.isArray(links) ? links : []
 
@@ -2029,17 +2077,10 @@ function NavLinksField({ links, pages, onChange }) {
   function remove(idx) { onChange(items.filter((_, i) => i !== idx)) }
   function add() { onChange([...items, 'Link']) }
 
-  function onDestChange(idx, obj, value) {
-    if (value === 'none') update(idx, { ...obj, type: 'none' })
-    else if (value === 'url') update(idx, { ...obj, type: 'url' })
-    else if (value.startsWith('page:')) update(idx, { ...obj, type: 'page', pageId: value.slice(5) })
-  }
-
   return (
     <div>
       {items.map((raw, idx) => {
         const link = normalizeNavLink(raw)
-        const destValue = link.type === 'page' ? `page:${link.pageId}` : link.type === 'url' ? 'url' : 'none'
         return (
           <div key={idx} style={s.arrayItem}>
             <div style={s.arrayItemBody}>
@@ -2050,41 +2091,46 @@ function NavLinksField({ links, pages, onChange }) {
                 onChange={(e) => update(idx, { ...link, label: e.target.value })}
                 style={s.input}
               />
-              <select
-                value={destValue}
-                onChange={(e) => onDestChange(idx, link, e.target.value)}
-                style={s.select}
-              >
-                <option value="none">No link (text only)</option>
-                {pages.length > 0 && (
-                  <optgroup label="Pages">
-                    {pages.map((p) => (
-                      <option key={p.id} value={`page:${p.id}`}>
-                        {p.name}{p.is_home ? ' (home)' : ''}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-                <option value="url">External URL…</option>
-              </select>
-              {link.type === 'url' && (
-                <input
-                  type="text"
-                  value={link.url}
-                  placeholder="https://example.com"
-                  onChange={(e) => update(idx, { ...link, url: e.target.value })}
-                  style={s.input}
-                />
-              )}
-              {link.type === 'page' && !pages.some((p) => p.id === link.pageId) && (
-                <div style={{ ...s.hint, color: '#f59e0b' }}>Linked page was removed — pick another.</div>
-              )}
+              <LinkDestEditor
+                dest={link}
+                pages={pages}
+                noneLabel="No link (text only)"
+                onChange={(d) => update(idx, { ...link, ...d })}
+              />
             </div>
             <button type="button" title="Remove" style={s.removeBtn} onClick={() => remove(idx)}>×</button>
           </div>
         )
       })}
       <button type="button" style={s.addBtn} onClick={add}>+ Add link</button>
+    </div>
+  )
+}
+
+/* A Button's link. Backward-compatible: a plain string is treated as a legacy
+   external URL; the object form is { type:'page'|'url', pageId, url }. Serialises
+   "no link" back to '' so the publish-time resolver renders an inert button. */
+function normalizeButtonLink(link) {
+  if (typeof link === 'string') return link ? { type: 'url', pageId: '', url: link } : { type: 'none', pageId: '', url: '' }
+  return {
+    type: link?.type === 'page' || link?.type === 'url' ? link.type : 'none',
+    pageId: link?.pageId || '',
+    url: link?.url || '',
+  }
+}
+function serializeButtonLink(dest) {
+  if (dest.type === 'page') return { type: 'page', pageId: dest.pageId }
+  if (dest.type === 'url') return { type: 'url', url: dest.url }
+  return '' // "no link" → empty string (keeps data backward-compatible)
+}
+
+/* Link editor for the standalone Button component: the same page/URL chooser the
+   Navbar / Footer links use, minus the label (the Button's text is its label). */
+function ButtonLinkField({ value, pages, onChange }) {
+  const dest = normalizeButtonLink(value)
+  return (
+    <div style={s.arrayItemBody}>
+      <LinkDestEditor dest={dest} pages={pages} onChange={(d) => onChange(serializeButtonLink(d))} />
     </div>
   )
 }
@@ -2102,9 +2148,13 @@ function PropertiesPanel({ block, siteId, pages = [], onChangeProp, onChangeStyl
   const content = []
   const colorProps = []
   const settingsProps = []
+  const isButton = block.type === 'button'
   if (!isImage) {
     for (const [key, val] of Object.entries(block.props)) {
       if (key === 'style') continue
+      // The Button's link gets its own page/URL chooser below — keep it out of
+      // the generic prop buckets so it isn't rendered as a plain text field.
+      if (isButton && key === 'link') continue
       if (COLOR_KEYS.has(key)) colorProps.push([key, val])
       else if (SELECT_OPTIONS[key]) settingsProps.push([key, val])
       else content.push([key, val])
@@ -2127,6 +2177,15 @@ function PropertiesPanel({ block, siteId, pages = [], onChangeProp, onChangeStyl
             )}
           </Field>
         ))}
+        {isButton && (
+          <Field label="Link">
+            <ButtonLinkField
+              value={block.props.link}
+              pages={pages}
+              onChange={(v) => onChangeProp('link', v)}
+            />
+          </Field>
+        )}
         {colorProps.map(([key, val]) => (
           <Field key={key} label={humanize(key)}>
             <PropField fieldKey={key} value={val} onChange={(v) => onChangeProp(key, v)} />
@@ -2552,6 +2611,7 @@ export default function Editor() {
   // incoming page's blocks + history.
   function switchPage(targetId) {
     if (!targetId || targetId === activePageIdRef.current) return
+    if (autosaveTimer.current) { clearTimeout(autosaveTimer.current); autosaveTimer.current = null }
     const outId = activePageIdRef.current
     const outBlocks = blocksRef.current
     if (outId && pageStatesRef.current[outId]) {
@@ -3148,24 +3208,47 @@ function derivePageSlug(v) {
    set as home / move / delete) and there is a "+" to add a page. */
 function PageTabBar({ pages, activePageId, onSwitch, onAdd, onRename, onSetHome, onDelete, onMove }) {
   const [menuFor, setMenuFor] = useState(null)   // pageId whose menu is open
+  const [menuPos, setMenuPos] = useState(null)   // { top, left } viewport coords for the open menu
   const [modal, setModal] = useState(null)       // { mode, pageId, name, slug, error, busy }
 
-  // Close any open kebab menu on an outside click / Escape.
+  const closeMenu = () => { setMenuFor(null); setMenuPos(null) }
+
+  // Open the kebab menu for a page, anchored just below its button. We capture
+  // the button's viewport rect and render the menu in a portal (position:fixed)
+  // so it escapes the page bar's horizontal-scroll overflow clipping.
+  function openMenu(e, pageId) {
+    e.stopPropagation()
+    if (menuFor === pageId) { closeMenu(); return }
+    const r = e.currentTarget.getBoundingClientRect()
+    const MENU_W = 170
+    setMenuFor(pageId)
+    setMenuPos({ top: r.bottom + 4, left: Math.min(r.left, window.innerWidth - MENU_W - 8) })
+  }
+
+  // Close any open kebab menu on an outside click / Escape / scroll / resize
+  // (the last two would otherwise leave the fixed-position menu detached).
   useEffect(() => {
     if (!menuFor) return
-    function onDocClick() { setMenuFor(null) }
-    function onKey(e) { if (e.key === 'Escape') setMenuFor(null) }
+    function onDocClick() { closeMenu() }
+    function onKey(e) { if (e.key === 'Escape') closeMenu() }
     document.addEventListener('click', onDocClick)
     document.addEventListener('keydown', onKey)
-    return () => { document.removeEventListener('click', onDocClick); document.removeEventListener('keydown', onKey) }
+    window.addEventListener('scroll', closeMenu, true)
+    window.addEventListener('resize', closeMenu)
+    return () => {
+      document.removeEventListener('click', onDocClick)
+      document.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', closeMenu, true)
+      window.removeEventListener('resize', closeMenu)
+    }
   }, [menuFor])
 
   function openAdd() {
-    setMenuFor(null)
+    closeMenu()
     setModal({ mode: 'add', name: '', slug: '', slugTouched: false, error: null, busy: false })
   }
   function openRename(page) {
-    setMenuFor(null)
+    closeMenu()
     setModal({ mode: 'rename', pageId: page.id, name: page.name, error: null, busy: false })
   }
 
@@ -3187,20 +3270,26 @@ function PageTabBar({ pages, activePageId, onSwitch, onAdd, onRename, onSetHome,
   }
 
   async function handleSetHome(pageId) {
-    setMenuFor(null)
+    closeMenu()
     try { await onSetHome(pageId) } catch (err) { alert(err.message || 'Could not set home page.') }
   }
   async function handleDelete(page) {
-    setMenuFor(null)
+    closeMenu()
+    // The home page and the last remaining page can't be deleted — a site must
+    // always keep at least one page, with one of them the home page.
+    if (page.is_home) { alert('The home page can’t be deleted. Set another page as home first.'); return }
+    if (pages.length <= 1) { alert('You can’t delete the only page of a site.'); return }
     if (!window.confirm(`Delete the "${page.name}" page? This can't be undone.`)) return
     try { await onDelete(page.id) } catch (err) { alert(err.message || 'Could not delete page.') }
   }
 
+  const menuIdx = pages.findIndex((p) => p.id === menuFor)
+  const menuPage = menuIdx === -1 ? null : pages[menuIdx]
+
   return (
     <div style={s.pageBar}>
-      {pages.map((page, idx) => {
+      {pages.map((page) => {
         const active = page.id === activePageId
-        const menuOpen = menuFor === page.id
         return (
           <div key={page.id} style={{ position: 'relative', flexShrink: 0 }}>
             <div
@@ -3214,46 +3303,52 @@ function PageTabBar({ pages, activePageId, onSwitch, onAdd, onRename, onSetHome,
                 type="button"
                 style={s.pageTabMenuBtn(active)}
                 title="Page options"
-                onClick={(e) => { e.stopPropagation(); setMenuFor(menuOpen ? null : page.id) }}
+                onClick={(e) => openMenu(e, page.id)}
               >⋯</button>
             </div>
-
-            {menuOpen && (
-              <div style={{ ...s.pageMenu, top: '32px', left: 0 }} onClick={(e) => e.stopPropagation()}>
-                <button type="button" style={s.pageMenuItem} onClick={() => openRename(page)}>Rename</button>
-                {!page.is_home && (
-                  <button type="button" style={s.pageMenuItem} onClick={() => handleSetHome(page.id)}>Set as home</button>
-                )}
-                <div style={s.pageMenuDivider} />
-                <button
-                  type="button"
-                  style={{ ...s.pageMenuItem, opacity: idx === 0 ? 0.4 : 1 }}
-                  disabled={idx === 0}
-                  onClick={() => { setMenuFor(null); onMove(page.id, -1) }}
-                >Move left</button>
-                <button
-                  type="button"
-                  style={{ ...s.pageMenuItem, opacity: idx === pages.length - 1 ? 0.4 : 1 }}
-                  disabled={idx === pages.length - 1}
-                  onClick={() => { setMenuFor(null); onMove(page.id, 1) }}
-                >Move right</button>
-                {!page.is_home && (
-                  <>
-                    <div style={s.pageMenuDivider} />
-                    <button
-                      type="button"
-                      style={{ ...s.pageMenuItem, ...s.pageMenuItemDanger }}
-                      onClick={() => handleDelete(page)}
-                    >Delete page</button>
-                  </>
-                )}
-              </div>
-            )}
           </div>
         )
       })}
 
       <button type="button" style={s.pageAddBtn} title="Add page" onClick={openAdd}>+</button>
+
+      {/* Kebab menu, rendered in a portal with position:fixed so it isn't clipped
+          by the page bar's horizontal-scroll overflow. */}
+      {menuPage && menuPos && createPortal(
+        <div
+          style={{ ...s.pageMenu, position: 'fixed', top: menuPos.top, left: menuPos.left }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button type="button" style={s.pageMenuItem} onClick={() => openRename(menuPage)}>Rename</button>
+          {!menuPage.is_home && (
+            <button type="button" style={s.pageMenuItem} onClick={() => handleSetHome(menuPage.id)}>Set as home</button>
+          )}
+          <div style={s.pageMenuDivider} />
+          <button
+            type="button"
+            style={{ ...s.pageMenuItem, opacity: menuIdx === 0 ? 0.4 : 1 }}
+            disabled={menuIdx === 0}
+            onClick={() => { closeMenu(); onMove(menuPage.id, -1) }}
+          >Move left</button>
+          <button
+            type="button"
+            style={{ ...s.pageMenuItem, opacity: menuIdx === pages.length - 1 ? 0.4 : 1 }}
+            disabled={menuIdx === pages.length - 1}
+            onClick={() => { closeMenu(); onMove(menuPage.id, 1) }}
+          >Move right</button>
+          {!menuPage.is_home && pages.length > 1 && (
+            <>
+              <div style={s.pageMenuDivider} />
+              <button
+                type="button"
+                style={{ ...s.pageMenuItem, ...s.pageMenuItemDanger }}
+                onClick={() => handleDelete(menuPage)}
+              >Delete page</button>
+            </>
+          )}
+        </div>,
+        document.body,
+      )}
 
       {modal && (
         <div style={s.pageModalOverlay} onClick={() => !modal.busy && setModal(null)}>

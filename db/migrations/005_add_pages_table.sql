@@ -25,17 +25,18 @@ CREATE TABLE IF NOT EXISTS pages (
 CREATE INDEX IF NOT EXISTS idx_pages_site_id ON pages(site_id);
 
 -- Backfill: one home page per site, carrying that site's existing blocks.
--- sites.content is TEXT holding a JSON array (or NULL/''); coalesce the empty
--- cases to an empty array before casting to jsonb. Only sites that have no
--- pages yet are touched, so this is safe to re-run.
+-- sites.content holds a JSON array (or is NULL/empty). Casting through ::text
+-- first makes this work whether the column is TEXT or JSONB: empty / NULL / JSON
+-- null collapse to an empty array, everything else round-trips to jsonb. Only
+-- sites that have no pages yet are touched, so this is safe to re-run.
 INSERT INTO pages (site_id, name, page_slug, blocks, sort_order, is_home)
 SELECT
     s.id,
     'Home',
     '',
     CASE
-        WHEN s.content IS NULL OR btrim(s.content) = '' THEN '[]'::jsonb
-        ELSE s.content::jsonb
+        WHEN s.content IS NULL OR btrim(s.content::text) IN ('', 'null') THEN '[]'::jsonb
+        ELSE s.content::text::jsonb
     END,
     0,
     TRUE

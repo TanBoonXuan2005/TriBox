@@ -93,7 +93,9 @@ const BLOCK_DEFINITIONS = {
 
   button: {
     label: 'Button',
-    defaultProps: { text: 'Click me', variant: 'filled' },
+    // `link` is a page/URL destination resolved at publish time (see server.js).
+    // '' = no link. A legacy plain-URL string is still accepted by the resolver.
+    defaultProps: { text: 'Click me', variant: 'filled', link: '' },
     render: (p) => (
       <div style={{ padding: '18px 32px' }}>
         <span style={{

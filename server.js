@@ -85,6 +85,13 @@ function navLinkHref(link, ctx) {
   }
   return null;
 }
+// A Button's link reuses the nav-link object shape { type:'page'|'url', pageId,
+// url }, with one extra backward-compatible case: a plain string is a legacy
+// external URL. Resolves to an href, or null when there is no destination.
+function buttonLinkHref(link, ctx) {
+  if (typeof link === 'string') return link || null; // legacy plain URL
+  return navLinkHref(link, ctx);
+}
 // Render one nav link as an <a> (when it resolves to an href) or a plain <span>
 // (legacy string links, or links with no destination), sharing the given inline
 // style so anchors and spans look identical.
@@ -236,14 +243,20 @@ const BLOCK_HTML = {
 
   text: (p) => `<p style="margin:0;padding:16px 32px;font-size:16px;line-height:1.65;color:#444;">${escapeHtml(p.content)}</p>`,
 
-  button: (p) => {
+  button: (p, ctx) => {
     const variant = p.variant === 'outline'
       ? 'background:transparent;color:#378ADD;border:1.5px solid #378ADD;'
       : 'background:#378ADD;color:#fff;border:1.5px solid #378ADD;';
+    const base = `display:inline-block;padding:11px 24px;border-radius:8px;font-size:14px;font-weight:600;${variant}`;
+    const href = buttonLinkHref(p.link, ctx);
+    const label = escapeHtml(p.text);
+    // An internal-page or external link renders as an <a>; a button with no (or a
+    // deleted) destination stays an inert <span>.
+    const inner = href
+      ? `<a href="${escapeHtml(href)}" style="${base}text-decoration:none;">${label}</a>`
+      : `<span style="${base}">${label}</span>`;
     return `
-    <div style="padding:18px 32px;">
-      <span style="display:inline-block;padding:11px 24px;border-radius:8px;font-size:14px;font-weight:600;${variant}">${escapeHtml(p.text)}</span>
-    </div>`;
+    <div style="padding:18px 32px;">${inner}</div>`;
   },
 
   image: (p) => {
@@ -1238,8 +1251,11 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
   if (site.slug) {
     try {
       // Compare only the path so host/port (proxy vs. origin server) don't matter.
+      // Accept the home page (/s/:slug) and any of the site's sub-pages
+      // (/s/:slug/:pageSlug).
       const refPath = normalise(new URL(referer).pathname);
-      matchesPublishedPage = refPath === normalise(`/s/${site.slug}`);
+      const base = normalise(`/s/${site.slug}`);
+      matchesPublishedPage = refPath === base || refPath.startsWith(`${base}/`);
     } catch {
       matchesPublishedPage = false;
     }
@@ -1466,8 +1482,10 @@ app.post('/api/sites/:id/leads', leadLimiter, async (req, res) => {
     let matchesPublishedPage = false;
     if (site.slug) {
       try {
+        // Accept the home page and any of the site's sub-pages.
         const refPath = normalise(new URL(referer).pathname);
-        matchesPublishedPage = refPath === normalise(`/s/${site.slug}`);
+        const base = normalise(`/s/${site.slug}`);
+        matchesPublishedPage = refPath === base || refPath.startsWith(`${base}/`);
       } catch {
         matchesPublishedPage = false;
       }
