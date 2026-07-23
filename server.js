@@ -102,6 +102,17 @@ function navLinkHtml(link, ctx, style) {
     ? `<a href="${escapeHtml(href)}" style="${style}text-decoration:none;">${label}</a>`
     : `<span style="${style}">${label}</span>`;
 }
+// A CTA-style button (Navbar action, Hero CTA, CTA block, Pricing plan). Same
+// contract as navLinkHtml but for the Button-block link shape: resolves via
+// buttonLinkHref and falls back to an inert <span> when there is no (or a
+// deleted-page) destination, so legacy blocks render exactly as before.
+function ctaButtonHtml(link, ctx, style, label) {
+  const text = escapeHtml(label);
+  const href = buttonLinkHref(link, ctx);
+  return href
+    ? `<a href="${escapeHtml(href)}" style="${style}text-decoration:none;">${text}</a>`
+    : `<span style="${style}">${text}</span>`;
+}
 
 // ── Shared helpers mirrored from client/src/components/BlockRenderer.jsx ─────────
 const ASPECT_PAD = { '16:9': '56.25%', '4:3': '75%', '1:1': '100%' };
@@ -224,15 +235,15 @@ const BLOCK_HTML = {
         <div style="display:flex;gap:26px;">
           ${(p.links || []).map((l) => navLinkHtml(l, ctx, 'font-size:14px;color:#555;font-weight:500;')).join('')}
         </div>
-        <span style="background:#111;color:#fff;padding:8px 16px;border-radius:7px;font-size:13px;font-weight:600;">${escapeHtml(p.cta)}</span>
+        ${ctaButtonHtml(p.ctaLink, ctx, 'background:#111;color:#fff;padding:8px 16px;border-radius:7px;font-size:13px;font-weight:600;', p.cta)}
       </div>
     </nav>`,
 
-  hero: (p) => `
+  hero: (p, ctx) => `
     <section style="background:${escapeHtml(p.bgColor || '#f5f5f5')};padding:78px 32px;text-align:center;">
       <h1 style="margin:0 0 14px;font-size:44px;font-weight:800;color:#111;letter-spacing:-0.02em;">${escapeHtml(p.title)}</h1>
       <p style="margin:0 auto 30px;font-size:18px;color:#666;max-width:520px;line-height:1.5;">${escapeHtml(p.subtitle)}</p>
-      <span style="display:inline-block;background:#378ADD;color:#fff;padding:13px 28px;border-radius:9px;font-size:15px;font-weight:600;">${escapeHtml(p.ctaText)}</span>
+      ${ctaButtonHtml(p.ctaLink, ctx, 'display:inline-block;background:#378ADD;color:#fff;padding:13px 28px;border-radius:9px;font-size:15px;font-weight:600;', p.ctaText)}
     </section>`,
 
   heading: (p) => {
@@ -380,7 +391,7 @@ const BLOCK_HTML = {
     </section>`;
   },
 
-  pricingTable: (p) => {
+  pricingTable: (p, ctx) => {
     const plans = p.plans || [];
     const cols = Math.max(1, plans.length || 1);
     return `
@@ -406,18 +417,26 @@ const BLOCK_HTML = {
                   <span style="opacity:${hot ? '0.95' : '0.85'};">${escapeHtml(f)}</span>
                 </div>`).join('')}
             </div>
-            <div style="text-align:center;padding:11px 0;border-radius:9px;font-size:14px;font-weight:700;background:${hot ? '#fff' : '#378ADD'};color:${hot ? '#2f6fc0' : '#fff'};">Get started</div>
+            ${(() => {
+              // Per-plan link (same shape as the Button block); an unresolvable
+              // or absent link keeps the legacy inert <div> byte-for-byte.
+              const btn = `text-align:center;padding:11px 0;border-radius:9px;font-size:14px;font-weight:700;background:${hot ? '#fff' : '#378ADD'};color:${hot ? '#2f6fc0' : '#fff'};`;
+              const href = buttonLinkHref(plan.link, ctx);
+              return href
+                ? `<a href="${escapeHtml(href)}" style="display:block;${btn}text-decoration:none;">Get started</a>`
+                : `<div style="${btn}">Get started</div>`;
+            })()}
           </div>`;
         }).join('')}
       </div>
     </section>`;
   },
 
-  cta: (p) => `
+  cta: (p, ctx) => `
     <section style="background:${escapeHtml(p.bgColor || '#111')};padding:64px 32px;text-align:center;">
       <h2 style="margin:0 0 12px;font-size:34px;font-weight:800;color:#fff;letter-spacing:-0.02em;">${escapeHtml(p.heading)}</h2>
       <p style="margin:0 auto 28px;font-size:17px;color:rgba(255,255,255,0.72);max-width:520px;line-height:1.5;">${escapeHtml(p.subtext)}</p>
-      <span style="display:inline-block;background:#fff;color:#111;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">${escapeHtml(p.buttonText)}</span>
+      ${ctaButtonHtml(p.buttonLink, ctx, 'display:inline-block;background:#fff;color:#111;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;', p.buttonText)}
     </section>`,
 
   /* ── CONTENT ───────────────────────────────────────────────── */

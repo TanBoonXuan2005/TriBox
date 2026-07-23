@@ -28,7 +28,9 @@ function navLinkLabel(link) {
 const BLOCK_DEFINITIONS = {
   navbar: {
     label: 'Navbar',
-    defaultProps: { logo: 'My Site', links: ['Home', 'About', 'Shop'], cta: 'Sign up' },
+    // ctaLink reuses the Button block's link shape ('' | legacy URL string |
+    // { type:'page'|'url', pageId, url }) and is resolved server-side at publish.
+    defaultProps: { logo: 'My Site', links: ['Home', 'About', 'Shop'], cta: 'Sign up', ctaLink: '' },
     render: (p) => (
       <nav style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -54,7 +56,7 @@ const BLOCK_DEFINITIONS = {
 
   hero: {
     label: 'Hero',
-    defaultProps: { title: 'Welcome', subtitle: 'Your tagline here', ctaText: 'Get started', bgColor: '#f5f5f5' },
+    defaultProps: { title: 'Welcome', subtitle: 'Your tagline here', ctaText: 'Get started', ctaLink: '', bgColor: '#f5f5f5' },
     render: (p) => (
       <section style={{ background: p.bgColor, padding: '78px 32px', textAlign: 'center' }}>
         <h1 style={{ margin: '0 0 14px', fontSize: '44px', fontWeight: 800, color: '#111', letterSpacing: '-0.02em' }}>
@@ -293,9 +295,9 @@ const BLOCK_DEFINITIONS = {
     label: 'Pricing Table',
     defaultProps: {
       plans: [
-        { name: 'Starter', price: '$9', features: ['1 project', '5 GB storage', 'Email support'], highlighted: false },
-        { name: 'Pro', price: '$29', features: ['Unlimited projects', '100 GB storage', 'Priority support', 'Analytics'], highlighted: true },
-        { name: 'Enterprise', price: '$99', features: ['Everything in Pro', 'SSO & SAML', 'Dedicated manager', 'SLA'], highlighted: false },
+        { name: 'Starter', price: '$9', features: ['1 project', '5 GB storage', 'Email support'], highlighted: false, link: '' },
+        { name: 'Pro', price: '$29', features: ['Unlimited projects', '100 GB storage', 'Priority support', 'Analytics'], highlighted: true, link: '' },
+        { name: 'Enterprise', price: '$99', features: ['Everything in Pro', 'SSO & SAML', 'Dedicated manager', 'SLA'], highlighted: false, link: '' },
       ],
     },
     render: (p) => (
@@ -344,7 +346,7 @@ const BLOCK_DEFINITIONS = {
 
   cta: {
     label: 'CTA',
-    defaultProps: { heading: 'Ready to get started?', subtext: 'Join thousands of teams building faster today.', buttonText: 'Start free trial', bgColor: '#111111' },
+    defaultProps: { heading: 'Ready to get started?', subtext: 'Join thousands of teams building faster today.', buttonText: 'Start free trial', buttonLink: '', bgColor: '#111111' },
     render: (p) => (
       <section style={{ background: p.bgColor || '#111', padding: '64px 32px', textAlign: 'center' }}>
         <h2 style={{ margin: '0 0 12px', fontSize: '34px', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>{p.heading}</h2>

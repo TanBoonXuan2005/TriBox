@@ -130,6 +130,51 @@ assert(styled.includes('data-entrance="slide-up"'), 'wrapper entrance attr');
 
 console.log('✓ new block types + style wrapper: all assertions passed');
 
+// ── CTA button links (navbar / hero / cta / pricing plans) ──────────────────────
+// All four reuse the Button block's link shape and the buttonLinkHref resolver.
+const linkCtx = { navContext: { siteSlug: 'acme', pagesById: {
+  home: { id: 'home', page_slug: 'home', is_home: true },
+  p1: { id: 'p1', page_slug: 'pricing', is_home: false },
+} } };
+
+const linked = renderBlocksToHTML([
+  { id: 'n', type: 'navbar', props: { logo: 'A', links: [], cta: 'Sign up', ctaLink: { type: 'page', pageId: 'home' } } },
+  { id: 'h', type: 'hero', props: { title: 'Hi', subtitle: 's', ctaText: 'Go', ctaLink: { type: 'url', url: 'https://ext.example' } } },
+  { id: 'c', type: 'cta', props: { heading: 'R?', subtext: 'j', buttonText: 'Start', buttonLink: { type: 'page', pageId: 'p1' } } },
+  { id: 'p', type: 'pricingTable', props: { plans: [
+    { name: 'Pro', price: '$29', features: ['X'], highlighted: true, link: { type: 'page', pageId: 'p1' } },
+    { name: 'Old', price: '$9', features: ['Y'], highlighted: false }, // legacy plan, no link key
+  ] } },
+], 'Linked', linkCtx);
+assert(linked.includes('<a href="/s/acme"') && linked.includes('>Sign up</a>'), 'navbar cta links to home page');
+assert(linked.includes('<a href="https://ext.example"') && linked.includes('>Go</a>'), 'hero cta links to external url');
+assert(linked.includes('<a href="/s/acme/pricing"') && linked.includes('>Start</a>'), 'cta block links to internal page');
+assert(/<a href="\/s\/acme\/pricing" style="display:block;[^"]*">Get started<\/a>/.test(linked), 'pricing plan button is a block-level anchor');
+assert(linked.includes('<div style="text-align:center;padding:11px 0;border-radius:9px;font-size:14px;font-weight:700;background:#378ADD;color:#fff;">Get started</div>'), 'legacy plan without link keeps inert div');
+
+// A deleted target page degrades to the inert element (no crash, no <a>).
+const dangling = renderBlocksToHTML([
+  { id: 'h', type: 'hero', props: { title: 'Hi', subtitle: 's', ctaText: 'Go', ctaLink: { type: 'page', pageId: 'gone' } } },
+  { id: 'p', type: 'pricingTable', props: { plans: [
+    { name: 'Pro', price: '$29', features: ['X'], highlighted: false, link: { type: 'page', pageId: 'gone' } },
+  ] } },
+], 'Dangling', linkCtx);
+assert(!dangling.includes('<a href'), 'deleted page target renders no anchor');
+assert(dangling.includes('>Go</span>') && dangling.includes('>Get started</div>'), 'deleted page target stays inert');
+
+// Legacy blocks (no link props at all) render the same inert markup as before.
+const legacy = renderBlocksToHTML([
+  { id: 'n', type: 'navbar', props: { logo: 'A', links: [], cta: 'Sign up' } },
+  { id: 'h', type: 'hero', props: { title: 'Hi', subtitle: 's', ctaText: 'Go' } },
+  { id: 'c', type: 'cta', props: { heading: 'R?', subtext: 'j', buttonText: 'Start' } },
+], 'Legacy', linkCtx);
+assert(!legacy.includes('<a href'), 'legacy blocks render no anchors');
+assert(legacy.includes('<span style="background:#111;color:#fff;padding:8px 16px;border-radius:7px;font-size:13px;font-weight:600;">Sign up</span>'), 'legacy navbar cta span unchanged');
+assert(legacy.includes('<span style="display:inline-block;background:#378ADD;color:#fff;padding:13px 28px;border-radius:9px;font-size:15px;font-weight:600;">Go</span>'), 'legacy hero cta span unchanged');
+assert(legacy.includes('<span style="display:inline-block;background:#fff;color:#111;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">Start</span>'), 'legacy cta block span unchanged');
+
+console.log('✓ CTA button links: all assertions passed');
+
 // ── AI Chat widget injection ────────────────────────────────────────────────────
 const KEY = 'live_key_xyz';
 const oneBlock = [{ id: 'h', type: 'hero', props: { title: 'Hi', subtitle: 'x', ctaText: 'Go' } }];

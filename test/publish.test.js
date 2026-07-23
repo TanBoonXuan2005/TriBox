@@ -17,6 +17,10 @@ const SITE = {
 };
 const usedSlugs = new Set();
 
+// In-memory `pages` table. Starts empty so ensurePages exercises its lazy
+// backfill path (home page created from the legacy sites.content column).
+const PAGES = [];
+
 const norm = (s) => s.replace(/\s+/g, ' ').trim();
 
 const mockPool = {
@@ -46,11 +50,41 @@ const mockPool = {
       return { rows: [{ id: SITE.id }] };
     }
 
+    // ensurePages: does the site have any pages yet?
+    if (sql.startsWith('SELECT 1 FROM pages WHERE site_id = $1')) {
+      return { rows: PAGES.some((p) => p.site_id === params[0]) ? [{ '?column?': 1 }] : [] };
+    }
+
+    // ensurePages: read the legacy content column to backfill the home page
+    if (sql.startsWith('SELECT content FROM sites WHERE id = $1')) {
+      return { rows: SITE.id === params[0] ? [{ content: SITE.content }] : [] };
+    }
+
+    // ensurePages: insert the backfilled home page (ON CONFLICT DO NOTHING)
+    if (sql.startsWith('INSERT INTO pages')) {
+      const [siteId, blocks] = params;
+      if (!PAGES.some((p) => p.site_id === siteId && p.page_slug === '')) {
+        PAGES.push({
+          id: `page-${PAGES.length + 1}`, site_id: siteId, name: 'Home',
+          page_slug: '', blocks, sort_order: 0, is_home: true,
+        });
+      }
+      return { rows: [] };
+    }
+
     // serve: look up a published site by slug
-    if (sql.startsWith('SELECT name, content, chatbot_enabled, api_key FROM sites WHERE slug = $1 AND is_published = true')) {
+    if (sql.startsWith('SELECT id, name, slug, chatbot_enabled, api_key FROM sites WHERE slug = $1 AND is_published = true')) {
       const row = SITE.slug === params[0] && SITE.is_published
-        ? { name: SITE.name, content: SITE.content, chatbot_enabled: SITE.chatbot_enabled ?? false, api_key: SITE.api_key ?? null } : undefined;
+        ? { id: SITE.id, name: SITE.name, slug: SITE.slug, chatbot_enabled: SITE.chatbot_enabled ?? false, api_key: SITE.api_key ?? null } : undefined;
       return { rows: row ? [row] : [] };
+    }
+
+    // serve: list a published site's pages
+    if (sql.startsWith('SELECT id, name, page_slug, blocks, sort_order, is_home FROM pages WHERE site_id = $1')) {
+      const rows = PAGES
+        .filter((p) => p.site_id === params[0])
+        .sort((a, b) => a.sort_order - b.sort_order);
+      return { rows };
     }
 
     throw new Error('Unexpected query in test: ' + sql);

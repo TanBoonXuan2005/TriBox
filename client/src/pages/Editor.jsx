@@ -1625,7 +1625,12 @@ function BoxField({ prefix, st, onChange }) {
    nested string-lists (newline editor), booleans (checkbox), selects, long
    text (textarea) and plain strings, so structures like pricing plans
    (features[], highlighted) and form fields (type, required) stay editable. */
-function ObjectFieldInput({ fieldKey, value, onChange }) {
+function ObjectFieldInput({ fieldKey, value, pages, onChange }) {
+  // Button-shaped link (e.g. a pricing plan's "Get started" destination) →
+  // the same page/URL chooser the standalone Button uses.
+  if (fieldKey === 'link') {
+    return <ButtonLinkField value={value} pages={pages || []} onChange={onChange} />
+  }
   // Nested array of strings → newline-separated editor.
   if (Array.isArray(value)) {
     return (
@@ -1682,9 +1687,14 @@ function ObjectFieldInput({ fieldKey, value, onChange }) {
   )
 }
 
-function ArrayField({ value, onChange }) {
+function ArrayField({ fieldKey, value, pages, onChange }) {
   const items = Array.isArray(value) ? value : []
   const isObj = items.length > 0 && typeof items[0] === 'object' && items[0] !== null
+
+  // Pricing plans gained a per-plan button `link` after launch; surface the
+  // field for legacy rows saved without it (written back only when edited).
+  const withRowDefaults = (item) =>
+    fieldKey === 'plans' && isObj && !('link' in item) ? { ...item, link: '' } : item
 
   function updateItem(idx, next) {
     const copy = items.slice()
@@ -1712,7 +1722,9 @@ function ArrayField({ value, onChange }) {
 
   return (
     <div>
-      {items.map((item, idx) => (
+      {items.map((rawItem, idx) => {
+        const item = withRowDefaults(rawItem)
+        return (
         <div key={idx} style={s.arrayItem}>
           <div style={s.arrayItemBody}>
             {isObj ? (
@@ -1721,6 +1733,7 @@ function ArrayField({ value, onChange }) {
                   key={k}
                   fieldKey={k}
                   value={item[k]}
+                  pages={pages}
                   onChange={(v) => updateItem(idx, { ...item, [k]: v })}
                 />
               ))
@@ -1740,16 +1753,17 @@ function ArrayField({ value, onChange }) {
             onClick={() => removeItem(idx)}
           >×</button>
         </div>
-      ))}
+        )
+      })}
       <button type="button" style={s.addBtn} onClick={addItem}>+ Add item</button>
     </div>
   )
 }
 
 /* Renders the right control for one prop based on its key / value */
-function PropField({ fieldKey, value, onChange }) {
+function PropField({ fieldKey, value, pages, onChange }) {
   if (Array.isArray(value)) {
-    return <ArrayField value={value} onChange={onChange} />
+    return <ArrayField fieldKey={fieldKey} value={value} pages={pages} onChange={onChange} />
   }
   if (typeof value === 'boolean' || BOOLEAN_KEYS.has(fieldKey)) {
     return (
@@ -2135,6 +2149,16 @@ function ButtonLinkField({ value, pages, onChange }) {
   )
 }
 
+/* Blocks whose CTA button carries a Button-shaped link prop. The prop is kept
+   out of the generic content buckets and edited with ButtonLinkField instead,
+   exactly like the standalone Button's `link`. */
+const BUTTON_LINK_PROPS = {
+  button: { key: 'link', label: 'Link' },
+  hero: { key: 'ctaLink', label: 'CTA button link' },
+  cta: { key: 'buttonLink', label: 'Button link' },
+  navbar: { key: 'ctaLink', label: 'Action button link' },
+}
+
 function PropertiesPanel({ block, siteId, pages = [], onChangeProp, onChangeStyle, onChangeStyleMulti, onDelete }) {
   const isNavLinks = (block.type === 'navbar' || block.type === 'footer')
   const def = BLOCK_DEFINITIONS[block.type]
@@ -2148,13 +2172,13 @@ function PropertiesPanel({ block, siteId, pages = [], onChangeProp, onChangeStyl
   const content = []
   const colorProps = []
   const settingsProps = []
-  const isButton = block.type === 'button'
+  const linkProp = BUTTON_LINK_PROPS[block.type]
   if (!isImage) {
     for (const [key, val] of Object.entries(block.props)) {
       if (key === 'style') continue
-      // The Button's link gets its own page/URL chooser below — keep it out of
-      // the generic prop buckets so it isn't rendered as a plain text field.
-      if (isButton && key === 'link') continue
+      // A CTA button's link gets its own page/URL chooser below — keep it out
+      // of the generic prop buckets so it isn't rendered as a plain text field.
+      if (linkProp && key === linkProp.key) continue
       if (COLOR_KEYS.has(key)) colorProps.push([key, val])
       else if (SELECT_OPTIONS[key]) settingsProps.push([key, val])
       else content.push([key, val])
@@ -2173,16 +2197,16 @@ function PropertiesPanel({ block, siteId, pages = [], onChangeProp, onChangeStyl
             {isNavLinks && key === 'links' ? (
               <NavLinksField links={val} pages={pages} onChange={(v) => onChangeProp(key, v)} />
             ) : (
-              <PropField fieldKey={key} value={val} onChange={(v) => onChangeProp(key, v)} />
+              <PropField fieldKey={key} value={val} pages={pages} onChange={(v) => onChangeProp(key, v)} />
             )}
           </Field>
         ))}
-        {isButton && (
-          <Field label="Link">
+        {linkProp && (
+          <Field label={linkProp.label}>
             <ButtonLinkField
-              value={block.props.link}
+              value={block.props[linkProp.key]}
               pages={pages}
-              onChange={(v) => onChangeProp('link', v)}
+              onChange={(v) => onChangeProp(linkProp.key, v)}
             />
           </Field>
         )}
